@@ -19,6 +19,7 @@ export class AppComponent {
   layer3: Konva.Layer;
   layer4: Konva.Layer;
   activeTransformer: Konva.Transformer;
+  dropArea: Konva.Circle;
 
   boardWidth = 1500;
   boardHeight = 1500;
@@ -26,12 +27,20 @@ export class AppComponent {
   dotsCount = 15;
 
   messageSub;
+
+  localBoard: {width:number, 
+               height: number, 
+               stage: Konva.Stage, 
+               layer: Konva.Layer,
+               tiles: Group[],
+               dropArea: Konva.Circle};
+
   constructor(private messageService: MessageService) {
     this.messageSub = this.messageService.getMessage().subscribe(message => {
       this.processEvent(message);
     });
   }
-
+  
   ngAfterViewInit() {
     let width = document.getElementById("mainBoard").offsetWidth;
     let height = window.innerHeight;
@@ -43,6 +52,19 @@ export class AppComponent {
       width: this.boardWidth,
       height: this.boardHeight
     });
+
+    this.localBoard = {
+      width: document.getElementById("localBoard").offsetWidth,
+      height: document.getElementById("localBoard").offsetHeight,
+      layer: new Konva.Layer(),
+      stage: new Konva.Stage({
+        container: 'localBoard',
+        width: document.getElementById("localBoard").offsetWidth,
+        height: document.getElementById("localBoard").offsetHeight,
+      }),
+      tiles:[],
+      dropArea: null // created during localBoardSetup
+    }
   }
 
   setupBoard(size: number) {
@@ -93,6 +115,16 @@ export class AppComponent {
       }
       this.layer4.add(this.tiles[i])
     }
+
+    this.dropArea = new Konva.Circle({
+      radius: 80,
+      fill: 'grey',
+      x: 900,
+      y: 450,
+      draggable: true
+    })
+
+    this.layer0.add(this.dropArea);
     // add the layer to the stage
     this.stage.add(this.layer0);
     this.stage.add(this.layer1);
@@ -171,6 +203,32 @@ export class AppComponent {
       name: 'backFace'
     }));
 
+    group.on('dragend', () => {
+
+      let dropArea: Konva.Circle ;
+      // If it is in the local board, then we check for the local board drop area
+      if (this.localBoard.tiles.find(item => item == group)) {
+        dropArea = this.localBoard.dropArea;
+      }
+      else {
+        dropArea = this.dropArea;
+      }
+      // otherwise check for the public droparea
+      let dropXmin = dropArea.x() - dropArea.radius();
+      let dropXmax = dropArea.x() + dropArea.radius();
+      let dropYmin = dropArea.y() - dropArea.radius();
+      let dropYmax = dropArea.y() + dropArea.radius();
+
+      if (group.x() > dropXmin && group.x() < dropXmax &&
+        group.y() > dropYmin && group.y() < dropYmax) {
+          if (dropArea == this.dropArea) {
+            this.moveTileToLocal(group);
+          } 
+          else {
+            this.moveTileToPublic(group);
+          }
+      }
+    });
     group.on('hide', () => {
       let back = group.findOne('.backFace');
       back.visible(true);
@@ -343,6 +401,7 @@ export class AppComponent {
 
     setTimeout(this.shuffleTile(tileNo + 1), 100);
   }
+  
   processEvent(message:string) {
     switch (message) {
       case 'shuffle':
@@ -352,13 +411,80 @@ export class AppComponent {
         break;
       case 'setup9':
         this.setupBoard(9);
+        this.setupLocalBoard();
         break;
       case 'setup12':
         this.setupBoard(12);
+        this.setupLocalBoard();
         break;
       case 'setup15':
         this.setupBoard(15);
+        this.setupLocalBoard();
         break;
+    } 
+  }
+
+  setupLocalBoard() {
+      this.localBoard.stage.destroyChildren();
+      this.localBoard.stage.add(this.localBoard.layer);
+      this.localBoard.tiles = [];
+      let dropArea = new Konva.Circle({
+        x: 400,
+        y: 50,
+        radius: 50,
+        fill: 'green',
+        draggable: true
+      });
+
+      this.localBoard.dropArea = dropArea;
+      this.localBoard.layer.add(dropArea);
+      this.localBoard.layer.draw();
+  }
+
+  moveTileToLocal(tile: Group) {    
+    tile.rotation(0);
+    tile.fire('show', null);
+    let parentLayer = tile.parent;
+    if (this.activeTransformer){
+      this.activeTransformer.destroy();
     }
+
+    this.tiles = this.tiles.filter(item => item !== tile);
+
+    this.localBoard.tiles.push(tile);
+    tile.remove();
+    parentLayer.draw();
+    
+    tile.position({x:this.localBoard.tiles.length*50, y:0});
+    this.localBoard.layer.add(tile);
+    this.localBoard.layer.draw();
+  }
+  moveTileToPublic(tile: Group) {
+    let parentLayer = tile.parent;
+    if (this.activeTransformer){
+      this.activeTransformer.destroy();
+    }
+    this.localBoard.tiles = this.localBoard.tiles.filter(item => item != tile);
+    this.tiles.push(tile);
+    tile.remove();
+    parentLayer.draw();
+    
+    tile.position({x:this.dropArea.x(), y: this.dropArea.y()});
+    let layers = [this.layer1, this.layer2, this.layer3, this.layer4];
+    // Get layer with fewer objects
+    let layer = layers.sort(
+      (a:Konva.Layer,b: Konva.Layer) => { return a.getChildren().length - b.getChildren().length})[0];
+    layer.add(tile);
+    layer.draw();
+  }
+
+  onWindowResize(event){
+    if (this.tiles.length == 0 ) {
+      return;
+    }
+    console.log(event);
+    let toAdd = event.oldHeight - event.newHeight;
+    console.log(this.localBoard.stage.y());
+    this.localBoard.stage.height(this.localBoard.stage.height()+toAdd); 
   }
 }
