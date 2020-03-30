@@ -346,7 +346,9 @@ export class AppComponent {
   processEvent(message:string) {
     switch (message) {
       case 'shuffle':
-        this.shuffleBoard();
+        if (this.tiles.length > 0){
+          this.shuffleBoard();
+        }
         break;
       case 'setup9':
         this.setupBoard(9);
