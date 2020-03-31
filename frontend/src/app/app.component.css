@@ -1,17 +1,3 @@
 p {
   font-family: Lato;
 }
-
-html,body {    
-  height:100%;
-  margin: 0;
-}
-div.mainboard {
-  height: 600px;
-  overflow: scroll;
-  resize: vertical
-}
-.localboard {
-  width: 100%;
-  height: 200px;
-}

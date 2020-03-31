@@ -6,16 +6,23 @@ import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
 import { MenuComponent } from './menu.component';
 import { AngularResizedEventModule } from 'angular-resize-event';
+import { RoomSelectorComponent } from './room-selector-component/room-selector.component';
+import { GameComponent } from './game/game.component';
+
+import { FormsModule } from '@angular/forms';
 
 @NgModule({
   declarations: [
     AppComponent,
-    MenuComponent
+    MenuComponent,
+    RoomSelectorComponent,
+    GameComponent
   ],
   imports: [
-    BrowserModule,
+    BrowserModule,    
+    AngularResizedEventModule,
     AppRoutingModule,
-    AngularResizedEventModule
+    FormsModule
   ],
   providers: [MessageService],
   bootstrap: [AppComponent]
