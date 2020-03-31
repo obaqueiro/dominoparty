@@ -222,6 +222,20 @@ export class AppComponent {
         this.setupLocalBoard();
         this.setupPublicBoard(15);
         break;
+      case 'zoomOut':
+        if (this.publicBoard.stage.scaleX() > .4) {
+          console.log(this.publicBoard.stage.scaleX(), this.publicBoard.stage.scaleY());
+          this.publicBoard.stage.scaleX(this.publicBoard.stage.scaleX() - .2);
+          this.publicBoard.stage.scaleY(this.publicBoard.stage.scaleY() - .2);
+          this.publicBoard.stage.draw();
+        }
+        break;
+      case 'zoomIn':
+        console.log(this.publicBoard.stage.scaleX(),this.publicBoard.stage.scaleY());
+        this.publicBoard.stage.scaleX(this.publicBoard.stage.scaleX() + .2);
+        this.publicBoard.stage.scaleY(this.publicBoard.stage.scaleY() + .2);
+        this.publicBoard.stage.draw();
+        break;
     } 
   }
   onWindowResize(event){
