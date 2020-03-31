@@ -19,7 +19,9 @@ export class TransformerSingleton {
 
   static destroy() {
     if(TransformerSingleton.activeTransformer) {
+      let layer = TransformerSingleton.activeTransformer.getLayer();
       TransformerSingleton.activeTransformer.destroy();
+      layer.draw();
       TransformerSingleton.activeTransformer = null;
     }
   }

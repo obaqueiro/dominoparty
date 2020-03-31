@@ -1,18 +1,22 @@
 import { Board } from './Board';
 import Konva from "konva";
 import { TransformerSingleton } from './TransformerSingleton';
+import { BaseLayer } from 'konva/types/BaseLayer';
 
 export class Tile extends Konva.Group {
   localBoard: Board;
   publicBoard: Board;
+  currentBoard: Board;
+  previousLayer: BaseLayer;
 
-  constructor(options: { top: number, bottom: number, localBoard: Board, publicBoard: Board }) {
+  constructor(options: { top: number, bottom: number, localBoard: Board, publicBoard: Board , currentBoard: Board}) {
     super();
     let group = this;
     let bottom = options.bottom;
     let top = options.top;
     this.localBoard = options.localBoard;
     this.publicBoard = options.publicBoard;
+    this.currentBoard = options.currentBoard;
 
     this.position({ x: 0, y: 0 });
     this.draggable(true);
@@ -34,11 +38,21 @@ export class Tile extends Konva.Group {
       visible: false,
       name: 'backFace'
     }));
+    
+
+    group.on('dragstart', () => {
+      TransformerSingleton.destroy();
+      group.moveToTop();
+      let layer = group.getLayer();
+      group.moveTo(group.currentBoard.dragLayer);
+      layer.batchDraw();
+      this.previousLayer = layer;
+    });
 
     group.on('dragend', () => {
       let dropArea: Konva.Circle;
       // If it is in the local board, then we check for the local board drop area
-      if (this.parent == this.localBoard.stage) {
+      if (this.parent.parent == this.localBoard.stage) {
         dropArea = this.localBoard.dropArea;
       }
       else {
@@ -53,11 +67,18 @@ export class Tile extends Konva.Group {
       if (group.x() > dropXmin && group.x() < dropXmax &&
         group.y() > dropYmin && group.y() < dropYmax) {
         if (dropArea == this.publicBoard.dropArea) {
-          this.moveTileToLocal();
+          this.moveToLocalBoard();
         }
         else {
-          this.moveTileToPublic();
+          this.moveToPublicBoard();
         }
+      } else {
+        let layer = group.getLayer();
+        group.moveTo(this.previousLayer);
+        layer.moveToTop();
+        group.moveToTop();
+        this.previousLayer.draw();
+        layer.draw();
       }
     });
     group.on('hide', () => {
@@ -182,19 +203,23 @@ export class Tile extends Konva.Group {
       stroke: "black",
       fill: "#FAF0E6",
       width: 40,
-      height: 40
+      height: 40,
+      hitStrokeWidth:0,
+      shadowForStrokeEnabled: false,
+      perfectDrawEnabled: false,
     });
 
     group.add(box);
     for (let coord of dotSpecs[n].coords) {
-      group.add(new Konva.Circle({ x: coord.x, y: coord.y, radius: dotSpecs[n].size, fill: dotSpecs[n].color }));
+      group.add(new Konva.Circle({ x: coord.x, y: coord.y, radius: dotSpecs[n].size, fill: dotSpecs[n].color,
+      hitStrokeWidth:0, shadowForStrokeEnabled: false, perfectDrawEnabled: false, listening: false}));
     }
     group.cache();
     return group;
   }
 
 
-  moveTileToLocal() {
+  moveToLocalBoard() {
     let tile = this;
     tile.rotation(0);
     tile.fire('show', null);
@@ -209,9 +234,10 @@ export class Tile extends Konva.Group {
     tile.position({ x: this.localBoard.tiles.length * 50, y: 0 });
     this.localBoard.layers[0].add(tile);
     this.localBoard.layers[0].draw();
+    this.currentBoard = this.localBoard;
   }
 
-  moveTileToPublic() {
+  moveToPublicBoard() {
     let tile = this;
     let parentLayer = tile.parent;
     TransformerSingleton.destroy();
@@ -228,6 +254,7 @@ export class Tile extends Konva.Group {
       (a: Konva.Layer, b: Konva.Layer) => { return a.getChildren().length - b.getChildren().length })[0];
     layer.add(tile);
     layer.draw();
+    this.currentBoard = this.publicBoard;
   }
 }
 

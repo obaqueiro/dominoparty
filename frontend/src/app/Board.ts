@@ -8,6 +8,7 @@ export class Board {
   layers: Konva.Layer[];
   tiles: Tile[];
   dropArea: Konva.Circle;
+  dragLayer: Konva.Layer;
   
   constructor(options:{
     width: number,
@@ -15,7 +16,9 @@ export class Board {
     stage: Konva.Stage,
     layers: Konva.Layer[],
     tiles?: Tile[],
-    dropArea?: Konva.Circle
+    dropArea?: Konva.Circle,
+    dragLayer: Konva.Layer
+
   }) {
     this.width = options.width;
     this.height = options.height;
@@ -23,6 +26,13 @@ export class Board {
     this.layers = options.layers;
     this.tiles = options.tiles || []
     this.dropArea = options.dropArea;
+    this.dragLayer = options.dragLayer;
+
+    this.layers.forEach(layer => {
+      this.stage.add(layer);
+    });
+    this.stage.add(this.dragLayer);
+
   }
 
   removeTile(tile: Tile) {

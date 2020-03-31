@@ -30,11 +30,6 @@ export class AppComponent {
   }
   
   ngAfterViewInit() {
-    let width = document.getElementById("mainBoard").offsetWidth;
-    let height = window.innerHeight;
-
-    console.log(width, height);
-
     this.publicBoard = new Board({
       width: this.boardWidth,
       height: this.boardHeight,
@@ -45,6 +40,7 @@ export class AppComponent {
       }),
       layers: [new Konva.Layer(),new Konva.Layer(),  new Konva.Layer(),
                 new Konva.Layer(), new Konva.Layer()],
+      dragLayer: new Konva.Layer()
     });
 
     this.localBoard = new Board({
@@ -57,6 +53,7 @@ export class AppComponent {
           height: document.getElementById("localBoard").offsetHeight,
         }),
         tiles: [],
+        dragLayer: new Konva.Layer(),
         dropArea: null // created during localBoardSetup
        });
     }
@@ -64,26 +61,40 @@ export class AppComponent {
 
   setupLocalBoard() {
     this.localBoard.stage.destroyChildren();
+    this.localBoard.layers = [new Konva.Layer()];
+    this.localBoard.dragLayer =  new Konva.Layer();
+
+    // The order of adding is important so that the tiles show in front of the dropArea when dragging
     this.localBoard.stage.add(this.localBoard.layers[0]);
+    this.localBoard.stage.add(this.localBoard.dragLayer);
+
     this.localBoard.tiles = [];
+
     let dropArea = new Konva.Circle({
       x: 400,
       y: 50,
       radius: 50,
       fill: 'green',
-      draggable: true
+      draggable: true,
     });
 
     this.localBoard.dropArea = dropArea;
     this.localBoard.layers[0].add(dropArea);
+    dropArea.moveToBottom();
     this.localBoard.layers[0].draw();
   }
 
   setupPublicBoard(size: number) {
-    console.log("Setting up board of ",size);
     this.publicBoard.stage.destroyChildren();
     this.publicBoard.tiles = [];
+    this.publicBoard.layers = [new Konva.Layer(),new Konva.Layer(),new Konva.Layer(),new Konva.Layer(),new Konva.Layer()]
 
+    this.publicBoard.layers.forEach(layer => {
+      this.publicBoard.stage.add(layer);
+    });
+
+    this.publicBoard.dragLayer = new Konva.Layer();
+    this.publicBoard.stage.add(this.publicBoard.dragLayer);
     this.dotsCount = size;
     // the order of how elementes are added affects their ZIndex 
     // center goes first
@@ -95,11 +106,14 @@ export class AppComponent {
       this.publicBoard.layers[0].add(train);
       train.position({ x: 800 + 50 * i, y: 50 });
     }
-    console.log('added center and trains');
     // then the tiles
     for (let i = 0; i <= this.dotsCount; i++) {
       for (let j = 0; j <= this.dotsCount; j++) {
-        let tile = new Tile({top: i, bottom: j, localBoard: this.localBoard, publicBoard: this.publicBoard});
+        let tile = new Tile({top: i, bottom: j,
+             localBoard: this.localBoard, 
+             publicBoard: this.publicBoard,
+             currentBoard: this.publicBoard
+            });
         tile.setAbsolutePosition({ x: i * 45, y: j * 90 });
         this.publicBoard.addTile(tile);
       }
@@ -115,12 +129,11 @@ export class AppComponent {
       x: 900,
       y: 450,
       draggable: true
-    })
+    });
 
     this.publicBoard.layers[0].add(this.publicBoard.dropArea);
 
-    this.publicBoard.layers.forEach(layer => {
-      this.publicBoard.stage.add(layer);
+    this.publicBoard.layers.forEach(layer => {      
       layer.draw();
     });
 
