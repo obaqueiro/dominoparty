@@ -1,1 +1,2 @@
-scp -c 3des-cbc  dist/dominoparty/*   root@baqueiro.com:/var/www/dominoparty
+npm run build
+scp  dist/dominoparty/*   root@198.199.105.155:/var/www/html
