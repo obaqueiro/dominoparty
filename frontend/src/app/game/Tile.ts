@@ -8,8 +8,14 @@ export class Tile extends Konva.Group {
   publicBoard: Board;
   currentBoard: Board;
   previousLayer: BaseLayer;
+  actionUpdate: Function;
 
-  constructor(options: { top: number, bottom: number, localBoard: Board, publicBoard: Board , currentBoard: Board}) {
+  constructor(options: { top: number, 
+    bottom: number, 
+    localBoard: Board, 
+    publicBoard: Board , 
+    currentBoard: Board,
+    actionUpdate: Function }) {
     super();
     let group = this;
     let bottom = options.bottom;
@@ -21,7 +27,7 @@ export class Tile extends Konva.Group {
     this.position({ x: 0, y: 0 });
     this.draggable(true);
     this.name(`${top}x${bottom}`)
-
+    this.actionUpdate = options.actionUpdate;
     group.add(this.generateTileSquare(0, 0, top));
     let bottomTile = this.generateTileSquare(0, 40, bottom);
     bottomTile.offset({ x: 40, y: 40 });
@@ -39,6 +45,16 @@ export class Tile extends Konva.Group {
       name: 'backFace'
     }));
     
+
+    group.on('transformend',() => {
+      this.actionUpdate({
+        name: group.name(),
+        action: 'move',
+        x: group.x(),
+        y: group.y(),
+        rotation: group.rotation()
+      });
+    });
 
     group.on('dragstart', () => {
       TransformerSingleton.destroy();
@@ -68,17 +84,40 @@ export class Tile extends Konva.Group {
         group.y() > dropYmin && group.y() < dropYmax) {
         if (dropArea == this.publicBoard.dropArea) {
           this.moveToLocalBoard();
+          this.actionUpdate({
+            name: group.name(),
+            action: 'destroy',
+            x: group.x(),
+            y: group.y(),
+            rotation: group.rotation()
+          });
         }
         else {
           this.moveToPublicBoard();
+          this.actionUpdate({
+            name: group.name(),
+            action: 'create',
+            x: group.x(),
+            y: group.y(),
+            rotation: group.rotation()
+          });
+
         }
-      } else {
+      } else {  // simply move around board
         let layer = group.getLayer();
         group.moveTo(this.previousLayer);
         layer.moveToTop();
         group.moveToTop();
         this.previousLayer.draw();
         layer.draw();
+        this.actionUpdate({
+          name: group.name(),
+          action: 'move',
+          x: group.x(),
+          y: group.y(),
+          rotation: group.rotation(),
+          flipped: this.isFlipped()
+        });
       }
     });
     group.on('hide', () => {
@@ -97,6 +136,14 @@ export class Tile extends Konva.Group {
       else {
         back.visible(true);
       }
+      this.actionUpdate({
+        name: group.name(),
+        action: 'move',
+        x: group.x(),
+        y: group.y(),
+        rotation: group.rotation(),
+        flipped: this.isFlipped()
+      });
       group.parent.draw();
     });
     group.on('click tap', () => {
@@ -121,7 +168,7 @@ export class Tile extends Konva.Group {
     return group;
   }
 
-
+  
   generateTileSquare(x: number, y: number, n: number): Konva.Group {
     let left = 8;
     let right = 32;
@@ -255,6 +302,16 @@ export class Tile extends Konva.Group {
     layer.add(tile);
     layer.draw();
     this.currentBoard = this.publicBoard;
+  }
+
+  isFlipped(){
+    return this.findOne('.backFace').visible();
+  }
+  flipped(isFlipped:boolean) {
+    if (isFlipped) {
+      this.fire('hide', null);
+    }
+    else (this.fire('show',null));
   }
 }
 

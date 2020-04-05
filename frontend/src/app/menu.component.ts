@@ -1,5 +1,5 @@
 import { Component } from '@angular/core';
-import { MessageService } from './message.service';
+import { MessageService } from './services/message.service';
 
 @Component({
   selector: 'menu',
@@ -11,16 +11,16 @@ export class MenuComponent  {
 
   }
   shuffle() {
-    setTimeout(()=> {this.messageService.updateMessage('shuffle');},0);
+    setTimeout(()=> {this.messageService.updateMessage(JSON.stringify({event:'shuffle'}))},0);
   }
   setup(size:number) {
-    setTimeout(()=> {this.messageService.updateMessage(`setup${size}`);},0);
+    setTimeout(()=> {this.messageService.updateMessage(JSON.stringify({event:`setup${size}`}));},0);
   }
 
   zoomIn() {
-    setTimeout(()=> {this.messageService.updateMessage(`zoomIn`);},0);
+    setTimeout(()=> {this.messageService.updateMessage(JSON.stringify({event:`zoomIn`}));},0);
   }
   zoomOut() {
-    setTimeout(()=> {this.messageService.updateMessage(`zoomOut`);},0);
+    setTimeout(()=> {this.messageService.updateMessage(JSON.stringify({event:`zoomOut`}));},0);
   }
 }

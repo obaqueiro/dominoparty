@@ -41,6 +41,9 @@ export class Board {
 
   addTile(tile: Tile) {
     this.tiles.push(tile);
+    // add tile to the layer with less children
+    this.layers.sort(
+      (a:Konva.Layer,b:Konva.Layer) => {return a.children.length - b.children.length})[0].add(tile);
   }
 
   draw() {
