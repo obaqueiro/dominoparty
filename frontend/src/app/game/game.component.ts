@@ -111,7 +111,7 @@ export class GameComponent {
   }
   setupPublicBoardInit() {
     this.publicBoard.stage.destroyChildren();
-
+    this.publicBoard.dropArea = null;
     this.publicBoard.tiles = [];
     this.trains = [];
     this.publicBoard.layers = [new Konva.Layer(), new Konva.Layer(), new Konva.Layer(), new Konva.Layer(), new Konva.Layer()]

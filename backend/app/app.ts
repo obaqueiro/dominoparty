@@ -1,13 +1,11 @@
 import * as express from "express";
 import { Socket } from "socket.io";
-import NeDB = require('nedb');
 import  redis = require('redis');
 
 class MainApplication {
   app;
   http;
   io;
-  databaseFile = 'dominoparty.nedb';
   redisHost = 'redis';
   redis: redis.RedisClient;
 
@@ -32,6 +30,7 @@ class MainApplication {
     let jsonMsg: { event:string, room: string , data?:any} = JSON.parse(message);
     console.log("received message",jsonMsg);
       let event = jsonMsg.event;
+    console.log(event);
       switch (event) {
         case 'connect':
           this.onPlayerConnect(jsonMsg.room, socket);
@@ -41,7 +40,8 @@ class MainApplication {
           this.onPlayerUpdate(jsonMsg.room, jsonMsg.data, socket);
           break;
         case 'pieceUpdate':
-          this.onPieceUpdate(jsonMsg.room, jsonMsg.data, socket)
+          console.log("updating a piece");
+          this.onPieceUpdate(jsonMsg.room, jsonMsg.data, socket);
         break;
       }
   }
@@ -147,8 +147,6 @@ class MainApplication {
               room.boardData.tiles =  room.boardData.tiles.splice(tileIndex,1);
               break;
           }
-          
-          
           break;
       }
 
