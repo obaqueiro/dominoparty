@@ -140,7 +140,7 @@ export class GameComponent {
     }
     // then the tiles
     for (let i = 0; i <= size; i++) {
-      for (let j = 0; j <= size; j++) {
+      for (let j = i; j <= size; j++) {
         let tile = new Tile({
           top: i, bottom: j,
           localBoard: this.localBoard,
@@ -148,7 +148,7 @@ export class GameComponent {
           currentBoard: this.publicBoard,
           actionUpdate: this.sendTileUpdateData.bind(this)
         });
-        tile.setAbsolutePosition({ x: i * 45, y: j * 90 });
+        tile.setAbsolutePosition({ x: j * 45, y: i * 90 });
         this.publicBoard.addTile(tile);
       }
     }

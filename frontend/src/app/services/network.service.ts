@@ -13,6 +13,13 @@ export class NetworkService {
 
   connect(room: string) {
     this.socket = io(environment.backendUrl);
+    this.setupHooks(room);
+    this.socket.on('reconnect', (_: number) => {
+      this.setupHooks(room);
+    });
+  }
+
+  private setupHooks(room: string) {
     this.socket.on('message', this.processMessage.bind(this));
     this.socket.emit('message', JSON.stringify({ event: 'connect', room: room }));
   }

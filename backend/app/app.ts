@@ -143,8 +143,7 @@ class MainApplication {
               });
               break;
             case 'destroy':
-              let tileIndex = room.boardData.tiles.findIndex(tile => tile.name == pieceData.name);
-              room.boardData.tiles =  room.boardData.tiles.splice(tileIndex,1);
+              room.boardData.tiles = room.boardData.tiles.filter(tile => tile.name != pieceData.name);
               break;
           }
           break;
@@ -186,7 +185,6 @@ class MainApplication {
 
   onConnection(socket: Socket) {
     console.log("a user connected, id: ", socket.id);
-
     socket.on('disconnect', (reason) => {
       this.onDisconnect(socket);
       console.log(`User with id ${socket.id} disconencted :(. `, reason);
