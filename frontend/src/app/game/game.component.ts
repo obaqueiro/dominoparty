@@ -418,7 +418,32 @@ export class GameComponent {
         console.log('we got a piece update', message);
         this.pieceUpdate(message.data);
         break;
+      case 'arrangeLocalTiles':
+        console.log("arranging lcoal tiles");
+        this.arrangeLocalTiles();
+        break;
     }
+  }
+
+  arrangeLocalTiles() {
+    let x = 0;
+    let y = 0;
+    this.localBoard.tiles.forEach(tile => {
+      tile.rotation(0);
+      tile.x(x);
+      tile.y(y);
+      this.localBoard.draw();
+      if (x >= this.localBoard.stage.width()-100) {
+        x = 0;
+        y = y + tile.getClientRect({}).height+10;
+      }
+      else
+      {
+        x += tile.getClientRect({}).width+10;
+      }
+
+    });
+
   }
 
   pieceUpdate(data: {

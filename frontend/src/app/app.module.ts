@@ -10,13 +10,15 @@ import { RoomSelectorComponent } from './room-selector-component/room-selector.c
 import { GameComponent } from './game/game.component';
 
 import { FormsModule } from '@angular/forms';
+import { LocalMenuComponent } from './local-menu/local-menu.component';
 
 @NgModule({
   declarations: [
     AppComponent,
     MenuComponent,
     RoomSelectorComponent,
-    GameComponent
+    GameComponent,
+    LocalMenuComponent
   ],
   imports: [
     BrowserModule,
