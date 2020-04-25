@@ -443,6 +443,7 @@ export class GameComponent {
                 actionUpdate: this.sendTileUpdateData.bind(this)
               });
               this.publicBoard.addTile(tile);
+              this.publicBoard.draw();
             }
             tile.x(data.state.x);
             tile.y(data.state.y);

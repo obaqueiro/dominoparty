@@ -49,13 +49,15 @@ export class Tile extends Konva.Group {
 
 
     group.on('transformend', () => {
-      this.actionUpdate({
-        name: group.name(),
-        action: 'move',
-        x: group.x(),
-        y: group.y(),
-        rotation: group.rotation()
-      });
+      if (this.parent.parent == this.publicBoard.stage) {
+        this.actionUpdate({
+          name: group.name(),
+          action: 'move',
+          x: group.x(),
+          y: group.y(),
+          rotation: group.rotation()
+        });
+      }
     });
 
     group.on('dragstart', () => {
@@ -107,19 +109,28 @@ export class Tile extends Konva.Group {
         }
       } else {  // simply move around board
         let layer = group.getLayer();
+        let {x,y} = this.getClientRect({});
+        
+        this.y(y < 0 ? this.y()+(-y) : this.y());
+        this.x(x < 0 ?  this.x()+ (-x) : this.x());
         group.moveTo(this.previousLayer);
         layer.moveToTop();
         group.moveToTop();
         this.previousLayer.draw();
         layer.draw();
-        this.actionUpdate({
-          name: group.name(),
-          action: 'move',
-          x: group.x(),
-          y: group.y(),
-          rotation: group.rotation(),
-          flipped: this.isFlipped()
-        });
+        console.log(this.position());
+        
+        // only send public board moves
+        if (this.parent.parent == this.publicBoard.stage) {
+          this.actionUpdate({
+            name: group.name(),
+            action: 'move',
+            x: group.x(),
+            y: group.y(),
+            rotation: group.rotation(),
+            flipped: this.isFlipped()
+          });
+        }
       }
     });
     group.on('hide', () => {
@@ -138,14 +149,16 @@ export class Tile extends Konva.Group {
       else {
         back.visible(true);
       }
-      this.actionUpdate({
-        name: group.name(),
-        action: 'move',
-        x: group.x(),
-        y: group.y(),
-        rotation: group.rotation(),
-        flipped: this.isFlipped()
-      });
+      if (this.parent.parent == this.publicBoard.stage) {
+        this.actionUpdate({
+          name: group.name(),
+          action: 'move',
+          x: group.x(),
+          y: group.y(),
+          rotation: group.rotation(),
+          flipped: this.isFlipped()
+        });
+      }
       group.parent.draw();
     });
     group.on('click tap', () => {
