@@ -19,7 +19,7 @@ import { FormsModule } from '@angular/forms';
     GameComponent
   ],
   imports: [
-    BrowserModule,    
+    BrowserModule,
     AngularResizedEventModule,
     AppRoutingModule,
     FormsModule

@@ -1,16 +1,16 @@
 import { Tile } from './Tile';
-import  Konva  from 'konva';
+import Konva from 'konva';
 
 export class Board {
-  width:number;
+  width: number;
   height: number;
   stage: Konva.Stage;
   layers: Konva.Layer[];
   tiles: Tile[];
   dropArea: Konva.Circle;
   dragLayer: Konva.Layer;
-  
-  constructor(options:{
+
+  constructor(options: {
     width: number,
     height: number,
     stage: Konva.Stage,
@@ -36,14 +36,14 @@ export class Board {
   }
 
   removeTile(tile: Tile) {
-    this.tiles =  this.tiles.filter(item => item !== tile);
+    this.tiles = this.tiles.filter(item => item !== tile);
   }
 
   addTile(tile: Tile) {
     this.tiles.push(tile);
     // add tile to the layer with less children
     this.layers.sort(
-      (a:Konva.Layer,b:Konva.Layer) => {return a.children.length - b.children.length})[0].add(tile);
+      (a: Konva.Layer, b: Konva.Layer) => { return a.children.length - b.children.length })[0].add(tile);
   }
 
   draw() {

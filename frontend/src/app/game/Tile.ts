@@ -10,12 +10,14 @@ export class Tile extends Konva.Group {
   previousLayer: BaseLayer;
   actionUpdate: Function;
 
-  constructor(options: { top: number, 
-    bottom: number, 
-    localBoard: Board, 
-    publicBoard: Board , 
+  constructor(options: {
+    top: number,
+    bottom: number,
+    localBoard: Board,
+    publicBoard: Board,
     currentBoard: Board,
-    actionUpdate: Function }) {
+    actionUpdate: Function
+  }) {
     super();
     let group = this;
     let bottom = options.bottom;
@@ -44,9 +46,9 @@ export class Tile extends Konva.Group {
       visible: false,
       name: 'backFace'
     }));
-    
 
-    group.on('transformend',() => {
+
+    group.on('transformend', () => {
       this.actionUpdate({
         name: group.name(),
         action: 'move',
@@ -168,7 +170,7 @@ export class Tile extends Konva.Group {
     return group;
   }
 
-  
+
   generateTileSquare(x: number, y: number, n: number): Konva.Group {
     let left = 8;
     let right = 32;
@@ -251,15 +253,17 @@ export class Tile extends Konva.Group {
       fill: "#FAF0E6",
       width: 40,
       height: 40,
-      hitStrokeWidth:0,
+      hitStrokeWidth: 0,
       shadowForStrokeEnabled: false,
       perfectDrawEnabled: false,
     });
 
     group.add(box);
     for (let coord of dotSpecs[n].coords) {
-      group.add(new Konva.Circle({ x: coord.x, y: coord.y, radius: dotSpecs[n].size, fill: dotSpecs[n].color,
-      hitStrokeWidth:0, shadowForStrokeEnabled: false, perfectDrawEnabled: false, listening: false}));
+      group.add(new Konva.Circle({
+        x: coord.x, y: coord.y, radius: dotSpecs[n].size, fill: dotSpecs[n].color,
+        hitStrokeWidth: 0, shadowForStrokeEnabled: false, perfectDrawEnabled: false, listening: false
+      }));
     }
     group.cache();
     return group;
@@ -304,14 +308,14 @@ export class Tile extends Konva.Group {
     this.currentBoard = this.publicBoard;
   }
 
-  isFlipped(){
+  isFlipped() {
     return this.findOne('.backFace').visible();
   }
-  flipped(isFlipped:boolean) {
+  flipped(isFlipped: boolean) {
     if (isFlipped) {
       this.fire('hide', null);
     }
-    else (this.fire('show',null));
+    else (this.fire('show', null));
   }
 }
 

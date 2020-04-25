@@ -5,7 +5,7 @@ import { Injectable } from "@angular/core";
   providedIn: 'root',
 })
 export class MessageService {
-  private myMessage=  new Subject<string>();
+  private myMessage = new Subject<string>();
 
   getMessage(): Observable<string> {
     return this.myMessage.asObservable();

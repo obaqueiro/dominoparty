@@ -5,8 +5,6 @@ import { Component } from "@angular/core";
 import Konva from "konva";
 import { Group } from "konva/types/Group";
 import { MessageService } from "../services/message.service";
-import { ActivatedRoute } from '@angular/router';
-
 
 @Component({
   selector: "game-root",
@@ -17,7 +15,7 @@ export class GameComponent {
   center: Group;
   trains: Group[];
 
-  publicBoardHeightRatio:number = 0.7;
+  publicBoardHeightRatio: number = 0.7;
   trainCount = 8;
   messageSub;
 
@@ -50,15 +48,15 @@ export class GameComponent {
       new Konva.Layer(), new Konva.Layer()],
       dragLayer: new Konva.Layer()
     });
-    
+
     this.localBoard = new Board({
       width: winDim.width,
-      height: 1 - winDim.height*this.publicBoardHeightRatio,
+      height: 1 - winDim.height * this.publicBoardHeightRatio,
       layers: [new Konva.Layer()],
       stage: new Konva.Stage({
         container: 'localBoard',
         width: winDim.width,
-        height: winDim.height * (1-this.publicBoardHeightRatio)
+        height: winDim.height * (1 - this.publicBoardHeightRatio)
       }),
       tiles: [],
       dragLayer: new Konva.Layer(),
@@ -67,15 +65,15 @@ export class GameComponent {
     this.connectToRoom();
   }
 
-  getViewDimensions(): {width:number, height:number} {
+  getViewDimensions(): { width: number, height: number } {
     var win = window,
-    doc = document,
-    docElem = doc.documentElement,
-    body = doc.getElementsByTagName('body')[0],
-    x = win.innerWidth || docElem.clientWidth || body.clientWidth,
-    y = win.innerHeight|| docElem.clientHeight|| body.clientHeight;
+      doc = document,
+      docElem = doc.documentElement,
+      body = doc.getElementsByTagName('body')[0],
+      x = win.innerWidth || docElem.clientWidth || body.clientWidth,
+      y = win.innerHeight || docElem.clientHeight || body.clientHeight;
     console.log(x + ' × ' + y);
-    return {width:x, height:y};
+    return { width: x, height: y };
   }
   connectToRoom() {
     this.network.connect(this.roomName);
@@ -135,7 +133,7 @@ export class GameComponent {
     // then the trains
     for (let i = 0; i < this.trainCount; i++) {
       let train = this.getTrain();
-      train.name('train'+i);
+      train.name('train' + i);
       this.publicBoard.layers[0].add(train);
       train.position({ x: 800 + 50 * i, y: 50 });
       this.trains.push(train);
@@ -163,8 +161,9 @@ export class GameComponent {
   }
 
   sendTileUpdateData(data: {
-    flipped?:boolean,
-    rotation?:number, x?:number, action?:string, y: number, name:string}) {
+    flipped?: boolean,
+    rotation?: number, x?: number, action?: string, y: number, name: string
+  }) {
     this.network.sendData(this.roomName, 'pieceUpdate', {
       event: 'pieceUpdate',
       piece: 'tile',
@@ -178,9 +177,9 @@ export class GameComponent {
       }
     });
   }
-  
+
   sendTrainUpdateData(train: Konva.Group) {
-    this.network.sendData(this.roomName, 'pieceUpdate',{
+    this.network.sendData(this.roomName, 'pieceUpdate', {
       event: 'pieceUpdate',
       piece: 'train',
       name: train.name(),
@@ -307,7 +306,7 @@ export class GameComponent {
 
     group.add(train);
     group.cache();
-    group.on('dragend',() => {
+    group.on('dragend', () => {
       console.log('moved train', group);
       this.sendTrainUpdateData(group);
     })
@@ -338,7 +337,7 @@ export class GameComponent {
       rotation: 0
     }));
 
-    group.on('dragend', () => this.sendCenterUpdateData()); 
+    group.on('dragend', () => this.sendCenterUpdateData());
     group.cache();
     return group;
   }
@@ -415,7 +414,7 @@ export class GameComponent {
         this.setupLocalBoard();
         this.loadBoard(message.data);
         break;
-      case 'pieceUpdate': 
+      case 'pieceUpdate':
         console.log('we got a piece update', message);
         this.pieceUpdate(message.data);
         break;
@@ -423,33 +422,34 @@ export class GameComponent {
   }
 
   pieceUpdate(data: {
-    piece:string, name:string, 
-    state:{flipped?:boolean,action?:string, x?:number, y?:number, rotation?:number}}) {
+    piece: string, name: string,
+    state: { flipped?: boolean, action?: string, x?: number, y?: number, rotation?: number }
+  }) {
     // do something depending on the type of piece the user is moving
-    switch(data.piece) {
+    switch (data.piece) {
       case 'tile':
-        let tile = this.publicBoard.tiles.find(tile => {return tile.name() == data.name});
-        switch(data.state.action) {
+        let tile = this.publicBoard.tiles.find(tile => { return tile.name() == data.name });
+        switch (data.state.action) {
           case 'move':
           case 'create':
-          // if it does not exist we create it
-          if (!tile) {
-            tile = new Tile({
-              localBoard: this.localBoard,
-              publicBoard: this.publicBoard,
-              currentBoard: this.publicBoard,
-              top: Number(data.name.split('x')[0]),
-              bottom: Number(data.name.split('x')[1]),
-              actionUpdate: this.sendTileUpdateData.bind(this)
-            });
-            this.publicBoard.addTile(tile);
-          }
-          tile.x(data.state.x);
-          tile.y(data.state.y);
-          tile.rotation(data.state.rotation);
-          tile.flipped(data.state.flipped);
-          tile.getLayer().draw();
-          break;
+            // if it does not exist we create it
+            if (!tile) {
+              tile = new Tile({
+                localBoard: this.localBoard,
+                publicBoard: this.publicBoard,
+                currentBoard: this.publicBoard,
+                top: Number(data.name.split('x')[0]),
+                bottom: Number(data.name.split('x')[1]),
+                actionUpdate: this.sendTileUpdateData.bind(this)
+              });
+              this.publicBoard.addTile(tile);
+            }
+            tile.x(data.state.x);
+            tile.y(data.state.y);
+            tile.rotation(data.state.rotation);
+            tile.flipped(data.state.flipped);
+            tile.getLayer().draw();
+            break;
           case 'destroy':
             let layer = tile.getLayer();
             this.publicBoard.removeTile(tile);
@@ -460,7 +460,7 @@ export class GameComponent {
         break;
       case 'train':
         console.log("updating train");
-        let train = this.trains.find(train => {return train.name() == data.name});
+        let train = this.trains.find(train => { return train.name() == data.name });
         if (data.state.action == 'move') {
           train.x(data.state.x);
           train.y(data.state.y);
@@ -484,13 +484,13 @@ export class GameComponent {
     this.localBoard.stage.height(this.localBoard.stage.height() + toAdd);
   }
 
-  onWindowReize(event){
+  onWindowReize(event) {
     console.log(event);
     let winDim = this.getViewDimensions();
     this.publicBoard.stage.width(winDim.width);
-    this.publicBoard.stage.height(this.publicBoardHeightRatio* winDim.height);
+    this.publicBoard.stage.height(this.publicBoardHeightRatio * winDim.height);
     this.localBoard.stage.width(winDim.width);
-    this.localBoard.stage.height((1-this.publicBoardHeightRatio)*winDim.height);
+    this.localBoard.stage.height((1 - this.publicBoardHeightRatio) * winDim.height);
     console.log(this.localBoard.stage.width(), this.localBoard.stage.height());
   }
 }

@@ -6,7 +6,7 @@ import { Component, OnInit } from '@angular/core';
   styleUrls: ['./room-selector.component.scss']
 })
 export class RoomSelectorComponent implements OnInit {
-  roomName:string;
+  roomName: string;
 
   constructor() { }
 
@@ -15,7 +15,7 @@ export class RoomSelectorComponent implements OnInit {
 
   onRoomButtonClick() {
     console.log(this.roomName);
-    window.location.href =  '/'+this.roomName;
+    window.location.href = '/' + this.roomName;
   }
 
 }

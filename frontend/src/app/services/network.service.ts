@@ -17,26 +17,26 @@ export class NetworkService {
     this.socket.emit('message', JSON.stringify({ event: 'connect', room: room }));
   }
 
-  private processMessage(message: {event:string, data?:any}) {
+  private processMessage(message: { event: string, data?: any }) {
     console.log(message);
-    switch(message.event) {
+    switch (message.event) {
       case 'update':
         this.messageSerivce.updateMessage(JSON.stringify(
-            { event:'boardUpdate', data: message.data}));
+          { event: 'boardUpdate', data: message.data }));
         break;
       case 'pieceUpdate':
         this.messageSerivce.updateMessage(JSON.stringify(
-          { event:'pieceUpdate', data: message.data}));
-      break;
+          { event: 'pieceUpdate', data: message.data }));
+        break;
       case 'setup':
       case 'connected':
         this.messageSerivce.updateMessage(JSON.stringify(
-          { event:'boardSetup', data: message.data}));
-      break;
+          { event: 'boardSetup', data: message.data }));
+        break;
     }
   }
 
-  sendData(room: string, event:string, data) {
+  sendData(room: string, event: string, data) {
     this.socket.emit('message', JSON.stringify({ event: event, room: room, data: data }));
   }
 }
