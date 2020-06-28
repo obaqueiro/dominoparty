@@ -10,6 +10,7 @@
 
 # dependencies
 /frontend/node_modules
+/frontend-palabrix/node_modules
 /backend/node_modules
 # profiling files
 chrome-profiler-events*.json
