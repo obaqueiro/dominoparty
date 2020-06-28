@@ -13,8 +13,8 @@ export class MenuComponent  {
   shuffle() {
     setTimeout(()=> {this.messageService.updateMessage(JSON.stringify({event:'shuffle'}))},0);
   }
-  setup(size:number) {
-    setTimeout(()=> {this.messageService.updateMessage(JSON.stringify({event:`setup${size}`}));},0);
+  setup() {
+    setTimeout(()=> {this.messageService.updateMessage(JSON.stringify({event:`setup`}));},0);
   }
 
   zoomIn() {

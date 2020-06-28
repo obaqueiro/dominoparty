@@ -11,8 +11,7 @@ export class Tile extends Konva.Group {
   actionUpdate: Function;
 
   constructor(options: {
-    top: number,
-    bottom: number,
+    letter: string,    
     localBoard: Board,
     publicBoard: Board,
     currentBoard: Board,
@@ -20,21 +19,16 @@ export class Tile extends Konva.Group {
   }) {
     super();
     let group = this;
-    let bottom = options.bottom;
-    let top = options.top;
+    let letter = options.letter;    
     this.localBoard = options.localBoard;
     this.publicBoard = options.publicBoard;
     this.currentBoard = options.currentBoard;
 
     this.position({ x: 0, y: 0 });
     this.draggable(true);
-    this.name(`${top}x${bottom}`)
+    this.name(letter)
     this.actionUpdate = options.actionUpdate;
-    group.add(this.generateTileSquare(0, 0, top));
-    let bottomTile = this.generateTileSquare(0, 40, bottom);
-    bottomTile.offset({ x: 40, y: 40 });
-    bottomTile.rotation(180);
-    group.add(bottomTile);
+    group.add(this.generateTileSquare(0,0,letter));    
 
     group.add(new Konva.Rect({
       x: 0,
@@ -42,7 +36,7 @@ export class Tile extends Konva.Group {
       stroke: "black",
       fill: "#FAF0E6",
       width: 40,
-      height: 80,
+      height: 40,
       visible: false,
       name: 'backFace'
     }));
@@ -161,21 +155,8 @@ export class Tile extends Konva.Group {
       }
       group.parent.draw();
     });
-    group.on('click tap', () => {
-      let newTransformer = new Konva.Transformer({
-        node: group as unknown as Konva.Rect,
-        anchorSize: 5,
-        borderDash: [3, 3],
-        centeredScaling: true,
-        rotationSnaps: [0, 90, 180, 270],
-        resizeEnabled: false,
-        anchorCornerRadiius: 1,
-        anchorStrokeWidth: 3
-      })
-      TransformerSingleton.setInstance(newTransformer);
-      group.parent.add(newTransformer);
-      group.parent.draw();
-    });
+
+
 
     group.on('dblclick dbltap', () => {
       group.fire('flip', null);
@@ -184,75 +165,11 @@ export class Tile extends Konva.Group {
   }
 
 
-  generateTileSquare(x: number, y: number, n: number): Konva.Group {
+  generateTileSquare(x:number, y:number , letter:string): Konva.Group {
     let left = 8;
     let right = 32;
     let mid = 20;
 
-    let dotSpecs = {
-      0: { color: '', coords: [], size: 0 },
-      1: { color: '#D06C31', coords: [{ x: 20, y: 20 }], size: 4 },
-      2: { color: '#B95C81', coords: [{ x: left, y: left }, { x: right, y: right }], size: 4 },
-      3: { color: '#47806C', coords: [{ x: left, y: left }, { x: right, y: right }, { x: mid, y: mid }], size: 4 },
-      4: { color: '#8D4654', coords: [{ x: left, y: left }, { x: right, y: right }, { x: left, y: right }, { x: right, y: left }], size: 4 },
-      5: {
-        color: '#6A7982', coords: [{ x: left, y: left }, { x: right, y: right },
-        { x: left, y: right }, { x: right, y: left }, { x: mid, y: mid }], size: 4
-      },
-      6: {
-        color: '#3B485C', coords: [{ x: left, y: left }, { x: right, y: right },
-        { x: left, y: right }, { x: right, y: left }, { x: left, y: mid }, { x: right, y: mid }], size: 4
-      },
-
-      7: {
-        color: '#A3923A', coords: [{ x: left, y: left }, { x: right, y: right },
-        { x: left, y: right }, { x: right, y: left }, { x: left, y: mid },
-        { x: right, y: mid }, { x: mid, y: mid }], size: 4
-      },
-      8: {
-        color: '#5A535B', coords: [{ x: left, y: left }, { x: right, y: right }, { x: left, y: right },
-        { x: right, y: left }, { x: left, y: mid }, { x: right, y: mid },
-        { x: mid, y: left }, { x: mid, y: right }], size: 4
-      },
-      9: {
-        color: '#7B7B7B', coords: [{ x: left, y: left }, { x: right, y: right }, { x: left, y: right },
-        { x: right, y: left }, { x: left, y: mid }, { x: right, y: mid },
-        { x: mid, y: left }, { x: mid, y: right }, { x: mid, y: mid }], size: 4
-      },
-      10: {
-        color: '#525252', coords: [{ x: 6, y: 6 }, { x: 6, y: 15 }, { x: 6, y: 24 }, { x: 6, y: 33 },
-        { x: 34, y: 6 }, { x: 34, y: 15 }, { x: 34, y: 24 }, { x: 34, y: 33 },
-        { x: 20, y: 6 }, { x: 20, y: 33 }], size: 3
-      },
-      11: {
-        color: '#8C4C5B', coords: [{ x: 6, y: 6 }, { x: 6, y: 15 }, { x: 6, y: 24 }, { x: 6, y: 33 },
-        { x: 34, y: 6 }, { x: 34, y: 15 }, { x: 34, y: 24 }, { x: 34, y: 33 },
-        { x: 20, y: 6 }, { x: 20, y: 33 }, { x: 20, y: 20 }], size: 3
-      },
-      12: {
-        color: '#BB6D88', coords: [{ x: 6, y: 6 }, { x: 6, y: 15 }, { x: 6, y: 24 }, { x: 6, y: 33 },
-        { x: 34, y: 6 }, { x: 34, y: 15 }, { x: 34, y: 24 }, { x: 34, y: 33 },
-        { x: 20, y: 6 }, { x: 20, y: 15 }, { x: 20, y: 24 }, { x: 20, y: 33 }], size: 3
-      },
-      13: {
-        color: '#7B6064', coords: [{ x: 6, y: 6 }, { x: 15, y: 6 }, { x: 24, y: 6 }, { x: 33, y: 6 },
-        { x: 6, y: 15 }, { x: 15, y: 15 }, { x: 24, y: 15 }, { x: 33, y: 15 },
-        { x: 6, y: 24 }, { x: 15, y: 24 }, { x: 24, y: 24 }, { x: 33, y: 24 },
-        { x: 20, y: 33 }], size: 3
-      },
-      14: {
-        color: '#775862', coords: [{ x: 6, y: 6 }, { x: 15, y: 6 }, { x: 24, y: 6 }, { x: 33, y: 6 },
-        { x: 6, y: 15 }, { x: 15, y: 15 }, { x: 24, y: 15 }, { x: 33, y: 15 },
-        { x: 6, y: 24 }, { x: 15, y: 24 }, { x: 24, y: 24 }, { x: 33, y: 24 },
-        { x: 10, y: 33 }, { x: 30, y: 33 }], size: 3
-      },
-      15: {
-        color: '#5C617D', coords: [{ x: 6, y: 6 }, { x: 15, y: 6 }, { x: 24, y: 6 }, { x: 33, y: 6 },
-        { x: 6, y: 15 }, { x: 15, y: 15 }, { x: 24, y: 15 }, { x: 33, y: 15 },
-        { x: 6, y: 24 }, { x: 15, y: 24 }, { x: 24, y: 24 }, { x: 33, y: 24 },
-        { x: 10, y: 33 }, { x: 30, y: 33 }, { x: 20, y: 33 }], size: 3
-      },
-    }
 
 
     let group = new Konva.Group({
@@ -272,12 +189,37 @@ export class Tile extends Konva.Group {
     });
 
     group.add(box);
-    for (let coord of dotSpecs[n].coords) {
-      group.add(new Konva.Circle({
-        x: coord.x, y: coord.y, radius: dotSpecs[n].size, fill: dotSpecs[n].color,
-        hitStrokeWidth: 0, shadowForStrokeEnabled: false, perfectDrawEnabled: false, listening: false
-      }));
+    // TODO: Add letter and number to tile
+    let letterValues = {
+      'A': 1, 'B':3, 'C': 3, 'CH': 5,
+      'D':2, 'E': 1, 'F':4, 'G':2, 'H':4,
+      'I':1, 'J':8, 'L':1,'LL':6, 'M':3, 'N':1,
+      'Ñ':8, 'O':1, 'P':3, 'Q':5, 'R':1, 'RR':8,
+      'S':1, 'T':1, 'U':1, 'V':4, 'X':8, 'Y':4, 'Z':10,
+      ' ':0
     }
+    let  l = new Konva.Text({
+      x: 10 - (letter.length > 1 ? 5 : 0),
+      y: 10 + (letter.length > 1 ? 2 : 0),
+      text: letter,
+      fontSize: (letter.length > 1 ? 16 : 20),
+      fontFamily: 'Calibri',
+      fill: 'brown'
+    });    
+    
+    group.add(l);
+    if (letterValues[letter] > 0) {
+      let number = new Konva.Text({
+        x: 10+ l.getWidth()  - (letter.length > 1 ? 5 : 0),
+        y: 20 ,
+        text: letterValues[letter],
+        fontSize: 10,
+        fontFamily: 'Calibri',
+        fill: 'brown'
+      });   
+      group.add(number);
+    }
+    
     group.cache();
     return group;
   }

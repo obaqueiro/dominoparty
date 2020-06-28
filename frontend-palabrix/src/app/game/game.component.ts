@@ -6,17 +6,15 @@ import Konva from "konva";
 import { Group } from "konva/types/Group";
 import { MessageService } from "../services/message.service";
 
-@Component({
+  @Component({
   selector: "game-root",
   templateUrl: "./game.component.html",
   styleUrls: ["./game.component.css"]
 })
 export class GameComponent {
   center: Group;
-  trains: Group[];
 
   publicBoardHeightRatio: number = 0.7;
-  trainCount = 8;
   messageSub;
 
   publicBoard: Board;
@@ -100,18 +98,20 @@ export class GameComponent {
 
   getLocalDropArea(): Konva.Circle {
     return new Konva.Circle({
+      radius: 50,
+      fillEnabled: false,
+      strokeWidth: 10,
+      stroke: 'green',
       x: 400,
       y: 50,
-      radius: 50,
-      fill: 'green',
-      draggable: true,
+      draggable: true
     });
   }
   setupPublicBoardInit() {
     this.publicBoard.stage.destroyChildren();
     this.publicBoard.dropArea = null;
     this.publicBoard.tiles = [];
-    this.trains = [];
+  
     this.publicBoard.layers = [new Konva.Layer(), new Konva.Layer(), new Konva.Layer(), new Konva.Layer(), new Konva.Layer()]
     this.publicBoard.layers.forEach(layer => {
       this.publicBoard.stage.add(layer);
@@ -124,40 +124,52 @@ export class GameComponent {
     this.publicBoard.layers[0].add(this.center);
   }
 
-  setupPublicBoard(size: number) {
+    setupPublicBoard() {
 
-    // the order of how elementes are added affects their ZIndex 
-    // center goes first
-    this.setupPublicBoardInit();
+      // the order of how elementes are added affects their ZIndex 
+      // center goes first
+      this.setupPublicBoardInit();
 
-    // then the trains
-    for (let i = 0; i < this.trainCount; i++) {
-      let train = this.getTrain();
-      train.name('train' + i);
-      this.publicBoard.layers[0].add(train);
-      train.position({ x: 800 + 50 * i, y: 50 });
-      this.trains.push(train);
-    }
-    // then the tiles
-    for (let i = 0; i <= size; i++) {
-      for (let j = i; j <= size; j++) {
+      let letters = [
+        'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A',
+        'B', 'B',
+        'C', 'C', 'C', 'C', 'CH',
+        'D', 'D', 'D', 'D', 'D',
+        'E', 'E', 'E', 'E', 'E', 'E', 'E', 'E', 'E', 'E', 'E', 'E',
+        'G', 'G', 'H', 'H',
+        'I', 'I', 'I', 'I', 'I',
+        'J', 'L', 'L', 'L', 'L',
+        'LL', 'M', 'M',
+        'N', 'N', 'N', 'N', 'N', 'Ñ',
+        'O', 'O', 'O', 'O', 'O', 'O', 'O', 'O', 'O',
+        'P', 'P', 'Q',
+        'R', 'R', 'R', 'R', 'R', 'RR',
+        'S', 'S', 'S', 'S', 'S', 'S',
+        'T', 'T', 'T', 'T',
+        'U', 'U', 'U', 'U', 'U',
+        'V', 'X', 'Y', 'Z', ' ', ' '
+      ]
+      // then the tiles
+      let position = 0;
+      letters.forEach(letter => {
         let tile = new Tile({
-          top: i, bottom: j,
+          letter: letter,
           localBoard: this.localBoard,
           publicBoard: this.publicBoard,
           currentBoard: this.publicBoard,
           actionUpdate: this.sendTileUpdateData.bind(this)
         });
-        tile.setAbsolutePosition({ x: j * 45, y: i * 90 });
+        position += 50; // 40 is the size of the tiles, so we leave some extra space
+        tile.setAbsolutePosition({ x: position % 500, y: (position / 500) * 50 });
         this.publicBoard.addTile(tile);
-      }
-    }
-
-    this.publicBoard.dropArea = this.getDropArea();
-    this.publicBoard.layers[0].add(this.publicBoard.dropArea);
-    this.publicBoard.layers.forEach(layer => {
-      layer.draw();
-    });
+      });
+      this.publicBoard.dropArea = this.getDropArea();
+      this.publicBoard.layers[0].add(this.publicBoard.dropArea);
+      this.publicBoard.layers.forEach(layer => {
+        layer.draw();
+      });
+  
+       
   }
 
   sendTileUpdateData(data: {
@@ -217,18 +229,17 @@ export class GameComponent {
             name: tile.name()
           }
         }),
-      center: { x: this.center.x(), y: this.center.y() },
-      trains: this.trains.map(train => {
-        return { x: train.x(), y: train.y(), name: train.name() }
-      })
+      center: { x: this.center.x(), y: this.center.y() },      
     });
   }
   getDropArea() {
     return new Konva.Circle({
       radius: 80,
-      fill: 'grey',
-      x: 900,
-      y: 450,
+      fillEnabled: false,
+      strokeWidth: 10,
+      stroke: 'grey',
+      x: 100,
+      y: 600,
       draggable: true
     });
   }
@@ -236,17 +247,15 @@ export class GameComponent {
   loadBoard(data: {}) {
     this.setupPublicBoardInit();
     this.publicBoard.tiles = [];
-    this.trains = [];
 
     for (let key in data) {
       switch (key) {
         case 'tiles':
-          data['tiles'].forEach(tileData => {
-            let [top, bottom] = tileData.name.split('x');
+          data['tiles'].forEach(tileData => {            
 
             let tile = new Tile(
               {
-                top: top, bottom: bottom, localBoard: this.localBoard,
+                letter: tileData.name, localBoard: this.localBoard,
                 publicBoard: this.publicBoard, currentBoard: this.publicBoard,
                 actionUpdate: this.sendTileUpdateData.bind(this)
               });
@@ -263,17 +272,6 @@ export class GameComponent {
           this.center.x(data['center'].x);
           this.center.y(data['center'].y);
 
-          break;
-        case 'trains':
-          console.log(data['trains']);
-          data['trains'].forEach(trainData => {
-            let train = this.getTrain();
-            train.x(trainData.x);
-            train.y(trainData.y);
-            train.name(trainData.name);
-            this.trains.push(train);
-            this.publicBoard.layers[0].add(train);
-          })
           break;
       }
 
@@ -297,48 +295,24 @@ export class GameComponent {
 
   }
 
-  getTrain() {
-    let group = new Konva.Group({ draggable: true });
-    let train = new Konva.Text({
-      text: '🚂',
-      fontSize: 35
-    });
-
-    group.add(train);
-    group.cache();
-    group.on('dragend', () => {
-      console.log('moved train', group);
-      this.sendTrainUpdateData(group);
-    })
-    return group;
-  }
-
 
   drawCenter(): Konva.Group {
-    let octagon = new Konva.RegularPolygon({
-      x: 0,
-      y: 0,
-      sides: 8,
-      radius: 100,
-      fill: "black",
-      rotation: 22.5
-    });
-    let group = new Konva.Group({ x: 900, y: 250, draggable: true, name: 'center' });
-    // let group = new Konva.Group({x:this.boardHeight/2, y:this.boardWidth/2, draggable: true, name:'center'});
-    group.add(octagon);
 
-    group.add(new Konva.Rect({
-      x: -25,
-      y: -40,
-      fill: "white",
-      width: 50,
-      height: 90,
-      visible: true,
-      rotation: 0
-    }));
 
+    let group = new Konva.Group({ x: 600, y: 50, draggable: true, name: 'center' });
+    let img = new Image();
+    img.src = '/assets/board.jpg';
+    img.onload = function() {
+      group.add(new Konva.Image( { x:0,y:0,image:img, width:1600, height:1600,
+        scaleX: 0.45,
+        scaleY: 0.45, } ));
+
+        group.cache();            
+        group.draw();
+    }
+        
     group.on('dragend', () => this.sendCenterUpdateData());
-    group.cache();
+   
     return group;
   }
 
@@ -378,21 +352,11 @@ export class GameComponent {
           this.shuffleBoard();
         }
         break;
-      case 'setup9':
+      case 'setup':
         this.setupLocalBoard();
-        this.setupPublicBoard(9);
+        this.setupPublicBoard();
         this.sendGameUpdateData('setup');
-        break;
-      case 'setup12':
-        this.setupLocalBoard();
-        this.setupPublicBoard(12);
-        this.sendGameUpdateData('setup');
-        break;
-      case 'setup15':
-        this.setupLocalBoard();
-        this.setupPublicBoard(15);
-        this.sendGameUpdateData('setup');
-        break;
+        break;      
       case 'zoomOut':
         if (this.publicBoard.stage.scaleX() > .4) {
           console.log(this.publicBoard.stage.scaleX(), this.publicBoard.stage.scaleY());
@@ -443,7 +407,6 @@ export class GameComponent {
       }
 
     });
-
   }
 
   pieceUpdate(data: {
@@ -463,8 +426,7 @@ export class GameComponent {
                 localBoard: this.localBoard,
                 publicBoard: this.publicBoard,
                 currentBoard: this.publicBoard,
-                top: Number(data.name.split('x')[0]),
-                bottom: Number(data.name.split('x')[1]),
+                letter: data.name,
                 actionUpdate: this.sendTileUpdateData.bind(this)
               });
               this.publicBoard.addTile(tile);
@@ -483,16 +445,7 @@ export class GameComponent {
             layer.draw();
             break;
         }
-        break;
-      case 'train':
-        console.log("updating train");
-        let train = this.trains.find(train => { return train.name() == data.name });
-        if (data.state.action == 'move') {
-          train.x(data.state.x);
-          train.y(data.state.y);
-        }
-        train.getLayer().draw();
-        break;
+        break;      
       case 'center':
         this.center.x(data.state.x);
         this.center.y(data.state.y);
