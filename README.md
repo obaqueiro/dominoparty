@@ -9,3 +9,7 @@ The backend is itself done in NodeJS with Express.js. The frontend is done in An
 # PalabrixParty
 
 There is a proof of concept conversion that allows one to play a Scrabble(TM)-like game.
+
+
+# License
+This code is released under MIT License. See LICENSE.md
