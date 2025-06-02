@@ -7,7 +7,7 @@ export class Board {
   stage: Konva.Stage;
   layers: Konva.Layer[];
   tiles: Tile[];
-  dropArea: Konva.Circle;
+  dropArea: Konva.Group;
   dragLayer: Konva.Layer;
 
   constructor(options: {
@@ -16,7 +16,7 @@ export class Board {
     stage: Konva.Stage;
     layers: Konva.Layer[];
     tiles?: Tile[];
-    dropArea: Konva.Circle;
+    dropArea: Konva.Group;
     dragLayer: Konva.Layer;
   }) {
     this.width = options.width;

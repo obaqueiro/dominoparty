@@ -64,15 +64,39 @@ export class GameComponent implements AfterViewInit, OnDestroy {
     window.onresize = this.onWindowReize.bind(this);
     const winDim = this.getViewDimensions();
     
+    // Add background layer for public board
+    const publicBgLayer = new Konva.Layer();
+    const publicBg = new Konva.Rect({
+      x: 0,
+      y: 0,
+      width: winDim.width * 2,
+      height: winDim.height * 2,
+      fill: '#f0f0f0',
+      stroke: '#e0e0e0',
+      strokeWidth: 1,
+      draggable: true,
+      listening: true
+    });
+    publicBgLayer.add(publicBg);
+    
+    // Create empty drop area group
+    const emptyDropArea = new Konva.Group({
+      x: 0,
+      y: 0,
+      draggable: true
+    });
+    
     this.publicBoard = new Board({
       width: winDim.width,
       height: winDim.height - 200,
       stage: new Konva.Stage({
         container: "mainBoard",
         width: winDim.width,
-        height: winDim.height - 200
+        height: winDim.height - 200,
+        draggable: true
       }),
       layers: [
+        publicBgLayer,
         new Konva.Layer(),
         new Konva.Layer(),
         new Konva.Layer(),
@@ -80,22 +104,49 @@ export class GameComponent implements AfterViewInit, OnDestroy {
         new Konva.Layer()
       ],
       dragLayer: new Konva.Layer(),
-      dropArea: new Konva.Circle({ radius: 0 })
+      dropArea: emptyDropArea
+    });
+
+    // Add background layer for local board
+    const localBgLayer = new Konva.Layer();
+    const localBg = new Konva.Rect({
+      x: 0,
+      y: 0,
+      width: winDim.width * 2,
+      height: winDim.height * 2,
+      fill: '#f8f8f8',
+      stroke: '#e8e8e8',
+      strokeWidth: 1,
+      draggable: true,
+      listening: true
+    });
+    localBgLayer.add(localBg);
+
+    // Create empty drop area group for local board
+    const emptyLocalDropArea = new Konva.Group({
+      x: 0,
+      y: 0,
+      draggable: true
     });
 
     this.localBoard = new Board({
       width: winDim.width,
       height: 160,
-      layers: [new Konva.Layer()],
+      layers: [localBgLayer],
       stage: new Konva.Stage({
         container: 'localBoard',
         width: winDim.width,
-        height: 160
+        height: 160,
+        draggable: true
       }),
       tiles: [],
       dragLayer: new Konva.Layer(),
-      dropArea: new Konva.Circle({ radius: 0 })
+      dropArea: emptyLocalDropArea
     });
+
+    // Add drag handlers for both boards
+    this.setupBoardDragHandlers(this.publicBoard);
+    this.setupBoardDragHandlers(this.localBoard);
 
     this.connectToRoom();
   }
@@ -137,18 +188,67 @@ export class GameComponent implements AfterViewInit, OnDestroy {
     this.localBoard.layers[0].draw();
   }
 
-  getLocalDropArea(): Konva.Circle {
-    return new Konva.Circle({
+  getLocalDropArea() {
+    // Create a smaller version of the drop area for the local board
+    const group = new Konva.Group({
       x: 400,
       y: 50,
-      radius: 50,
-      fill: 'green',
       draggable: true,
+      listening: true  // Ensure it can receive events
     });
+
+    const outerCircle = new Konva.Circle({
+      radius: 50,
+      fillLinearGradientStartPoint: { x: -50, y: -50 },
+      fillLinearGradientEndPoint: { x: 50, y: 50 },
+      fillLinearGradientColorStops: [0, '#4CAF50', 1, '#388E3C'],
+      stroke: '#2c3e50',
+      strokeWidth: 2,
+      shadowColor: 'rgba(0,0,0,0.3)',
+      shadowBlur: 8,
+      shadowOffset: { x: 3, y: 3 },
+      shadowOpacity: 0.5,
+      name: 'outer-circle'  // Add name for finding it later
+    });
+
+    const innerCircle = new Konva.Circle({
+      radius: 40,
+      fill: '#ffffff',
+      stroke: '#2c3e50',
+      strokeWidth: 1,
+      dash: [4, 4]
+    });
+
+    const decoration = new Konva.Star({
+      x: 0,
+      y: 0,
+      numPoints: 6,
+      innerRadius: 25,
+      outerRadius: 35,
+      fill: 'rgba(76, 175, 80, 0.1)',
+      stroke: '#4CAF50',
+      strokeWidth: 1
+    });
+
+    group.add(outerCircle);
+    group.add(innerCircle);
+    group.add(decoration);
+
+    // Add hover effect
+    group.on('mouseover', () => {
+      outerCircle.fillLinearGradientColorStops([0, '#388E3C', 1, '#2c3e50']);
+      group.getLayer()?.batchDraw();
+    });
+
+    group.on('mouseout', () => {
+      outerCircle.fillLinearGradientColorStops([0, '#4CAF50', 1, '#388E3C']);
+      group.getLayer()?.batchDraw();
+    });
+
+    return group;
   }
   setupPublicBoardInit() {
     this.publicBoard.stage.destroyChildren();
-    this.publicBoard.dropArea = new Konva.Circle({ radius: 0 });
     this.publicBoard.tiles = [];
     this.trains = [];
     this.publicBoard.layers = [new Konva.Layer(), new Konva.Layer(), new Konva.Layer(), new Konva.Layer(), new Konva.Layer()];
@@ -164,10 +264,19 @@ export class GameComponent implements AfterViewInit, OnDestroy {
   }
 
   setupPublicBoard(size: number) {
-
-    // the order of how elementes are added affects their ZIndex 
+    // the order of how elements are added affects their ZIndex 
     // center goes first
     this.setupPublicBoardInit();
+
+    // Create and add drop area first
+    const dropArea = this.getDropArea();
+    this.publicBoard.dropArea = dropArea;
+    this.publicBoard.layers[0].add(dropArea);
+    dropArea.moveToBottom(); // Ensure drop area is behind other elements
+
+    // Store the initial stage-relative position
+    const dropAreaStageX = dropArea.x();
+    const dropAreaStageY = dropArea.y();
 
     // then the trains
     for (let i = 0; i < this.trainCount; i++) {
@@ -177,6 +286,7 @@ export class GameComponent implements AfterViewInit, OnDestroy {
       train.position({ x: 800 + 50 * i, y: 50 });
       this.trains.push(train);
     }
+
     // then the tiles
     for (let i = 0; i <= size; i++) {
       for (let j = i; j <= size; j++) {
@@ -193,11 +303,12 @@ export class GameComponent implements AfterViewInit, OnDestroy {
       }
     }
 
-    this.publicBoard.dropArea = this.getDropArea();
-    this.publicBoard.layers[0].add(this.publicBoard.dropArea);
     this.publicBoard.layers.forEach(layer => {
       layer.draw();
     });
+
+    // Setup drag handlers after everything is set up
+    this.setupBoardDragHandlers(this.publicBoard);
   }
 
   sendTileUpdateData(data: {
@@ -281,13 +392,67 @@ export class GameComponent implements AfterViewInit, OnDestroy {
     });
   }
   getDropArea() {
-    return new Konva.Circle({
-      radius: 80,
-      fill: 'grey',
+    // Create a more visually appealing drop area
+    const group = new Konva.Group({
       x: 900,
       y: 450,
-      draggable: true
+      draggable: true,
+      listening: true  // Ensure it can receive events
     });
+
+    // Outer circle with gradient
+    const outerCircle = new Konva.Circle({
+      radius: 80,
+      fillLinearGradientStartPoint: { x: -80, y: -80 },
+      fillLinearGradientEndPoint: { x: 80, y: 80 },
+      fillLinearGradientColorStops: [0, '#4a90e2', 1, '#357abd'],
+      stroke: '#2c3e50',
+      strokeWidth: 2,
+      shadowColor: 'rgba(0,0,0,0.3)',
+      shadowBlur: 10,
+      shadowOffset: { x: 5, y: 5 },
+      shadowOpacity: 0.5,
+      name: 'outer-circle'  // Add name for finding it later
+    });
+
+    // Inner circle with pattern
+    const innerCircle = new Konva.Circle({
+      radius: 70,
+      fill: '#ffffff',
+      stroke: '#2c3e50',
+      strokeWidth: 1,
+      dash: [5, 5]
+    });
+
+    // Add some decorative elements
+    const decoration = new Konva.Star({
+      x: 0,
+      y: 0,
+      numPoints: 8,
+      innerRadius: 40,
+      outerRadius: 60,
+      fill: 'rgba(74, 144, 226, 0.1)',
+      stroke: '#4a90e2',
+      strokeWidth: 1,
+      rotation: 22.5
+    });
+
+    group.add(outerCircle);
+    group.add(innerCircle);
+    group.add(decoration);
+
+    // Add hover effect
+    group.on('mouseover', () => {
+      outerCircle.fillLinearGradientColorStops([0, '#357abd', 1, '#2c3e50']);
+      group.getLayer()?.batchDraw();
+    });
+
+    group.on('mouseout', () => {
+      outerCircle.fillLinearGradientColorStops([0, '#4a90e2', 1, '#357abd']);
+      group.getLayer()?.batchDraw();
+    });
+
+    return group;
   }
 
   loadBoard(data: BoardData) {
@@ -301,6 +466,17 @@ export class GameComponent implements AfterViewInit, OnDestroy {
     this.setupPublicBoardInit();
     this.publicBoard.tiles = [];
     this.trains = [];
+
+    // Create new drop area for the public board with fixed position
+    console.log('GameComponent: Creating new public drop area');
+    const dropArea = this.getDropArea();
+    this.publicBoard.dropArea = dropArea;
+    this.publicBoard.layers[0].add(dropArea);
+    dropArea.moveToBottom(); // Ensure drop area is behind other elements
+    
+    // Store the initial stage-relative position
+    const dropAreaStageX = dropArea.x();
+    const dropAreaStageY = dropArea.y();
 
     // Load tiles
     if (data.tiles && Array.isArray(data.tiles)) {
@@ -380,27 +556,14 @@ export class GameComponent implements AfterViewInit, OnDestroy {
       console.log('GameComponent: No trains to load or invalid trains data:', data.trains);
     }
 
-    // Setup drop areas if needed
+    // Setup local board drop area if needed
     if (!this.localBoard.dropArea) {
       console.log('GameComponent: Creating local drop area');
-      let dropArea = this.getLocalDropArea();
-      this.localBoard.dropArea = dropArea;
-      this.localBoard.layers[0].add(dropArea);
+      let localDropArea = this.getLocalDropArea();
+      this.localBoard.dropArea = localDropArea;
+      this.localBoard.layers[0].add(localDropArea);
+      localDropArea.moveToBottom(); // Ensure drop area is behind other elements
       this.localBoard.layers[0].draw();
-    }
-
-    if (!this.publicBoard.dropArea) {
-      console.log('GameComponent: Creating public drop area');
-      this.publicBoard.dropArea = this.getDropArea();
-      this.publicBoard.layers[0].add(this.publicBoard.dropArea);
-    } else {
-      // Ensure the dropArea is visible and properly positioned
-      this.publicBoard.dropArea.radius(80);  // Set the radius to match getDropArea()
-      this.publicBoard.dropArea.x(900);      // Set the x position to match getDropArea()
-      this.publicBoard.dropArea.y(450);      // Set the y position to match getDropArea()
-      this.publicBoard.dropArea.fill('grey'); // Set the fill color to match getDropArea()
-      this.publicBoard.dropArea.draggable(true);
-      this.publicBoard.layers[0].add(this.publicBoard.dropArea);
     }
 
     // Draw everything
@@ -420,8 +583,17 @@ export class GameComponent implements AfterViewInit, OnDestroy {
       trainCount: this.trains.length,
       hasCenter: !!this.center,
       centerPosition: this.center ? { x: this.center.x(), y: this.center.y() } : null,
-      layerCount: this.publicBoard.layers.length
+      layerCount: this.publicBoard.layers.length,
+      hasDropArea: !!this.publicBoard.dropArea,
+      dropAreaPosition: this.publicBoard.dropArea ? { 
+        x: this.publicBoard.dropArea.x(), 
+        y: this.publicBoard.dropArea.y() 
+      } : null
     });
+
+    // Setup drag handlers after everything is loaded
+    this.setupBoardDragHandlers(this.publicBoard);
+    this.setupBoardDragHandlers(this.localBoard);
   }
 
   getTrain() {
@@ -698,5 +870,82 @@ export class GameComponent implements AfterViewInit, OnDestroy {
     
     this.publicBoard.draw();
     this.localBoard.draw();
+  }
+
+  private setupBoardDragHandlers(board: Board) {
+    let isDraggingTile = false;
+    let dragStartTime = 0;
+    let isDraggingBackground = false;
+    const DRAG_THRESHOLD = 200; // milliseconds to wait before considering it a background drag
+
+    // Store the drop area's position relative to the stage
+    let dropAreaStageX = board.dropArea.x();
+    let dropAreaStageY = board.dropArea.y();
+
+    board.stage.on('mousedown touchstart', (e) => {
+      // If we clicked on a tile or the drop area, don't start background drag
+      if (e.target !== board.stage && e.target !== board.layers[0].getChildren()[0]) {
+        isDraggingTile = true;
+        return;
+      }
+      
+      dragStartTime = Date.now();
+      isDraggingTile = false;
+    });
+
+    board.stage.on('mousemove touchmove', (e) => {
+      // If we're dragging a tile, don't move the background
+      if (isDraggingTile || board.dragLayer.getChildren().length > 0) {
+        return;
+      }
+
+      // Only start background drag if we've held the mouse down for a while
+      if (Date.now() - dragStartTime > DRAG_THRESHOLD) {
+        isDraggingBackground = true;
+        // Update background position
+        const bgLayer = board.layers[0];
+        const bg = bgLayer.getChildren()[0] as Konva.Rect;
+        if (bg) {
+          bg.x(bg.x() + e.evt.movementX);
+          bg.y(bg.y() + e.evt.movementY);
+          bgLayer.batchDraw();
+
+          // Update drop area position relative to stage movement
+          board.dropArea.x(dropAreaStageX);
+          board.dropArea.y(dropAreaStageY);
+          board.dropArea.getLayer()?.batchDraw();
+        }
+      }
+    });
+
+    board.stage.on('mouseup touchend', () => {
+      if (isDraggingBackground) {
+        // Update the stored stage-relative position when background drag ends
+        dropAreaStageX = board.dropArea.x();
+        dropAreaStageY = board.dropArea.y();
+      }
+      isDraggingTile = false;
+      isDraggingBackground = false;
+      dragStartTime = 0;
+    });
+
+    // Handle drag end for tiles
+    board.stage.on('dragend', (e) => {
+      isDraggingTile = false;
+      dragStartTime = 0;
+    });
+
+    // Make drop area only draggable when explicitly clicked
+    board.dropArea.draggable(true);
+    board.dropArea.on('dragstart', () => {
+      // Prevent background drag when dragging drop area
+      isDraggingTile = true;
+    });
+    board.dropArea.on('dragend', () => {
+      // Update the stored stage-relative position when drop area is dragged
+      dropAreaStageX = board.dropArea.x();
+      dropAreaStageY = board.dropArea.y();
+      isDraggingTile = false;
+    });
   }
 }

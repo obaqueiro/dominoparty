@@ -99,7 +99,7 @@ export class Tile extends Konva.Group {
     });
 
     group.on('dragend', () => {
-      let dropArea: Konva.Circle;
+      let dropArea: Konva.Group;
       const parent = this.parent;
       // If it is in the local board, then we check for the local board drop area
       if (parent && parent.parent === this.localBoard.stage) {
@@ -108,10 +108,14 @@ export class Tile extends Konva.Group {
         dropArea = this.publicBoard.dropArea;
       }
 
-      let dropXmin = dropArea.x() - dropArea.radius();
-      let dropXmax = dropArea.x() + dropArea.radius();
-      let dropYmin = dropArea.y() - dropArea.radius();
-      let dropYmax = dropArea.y() + dropArea.radius();
+      // Get the outer circle from the drop area group
+      const outerCircle = dropArea.findOne('.outer-circle') as Konva.Circle;
+      if (!outerCircle) return;
+
+      let dropXmin = dropArea.x() - outerCircle.radius();
+      let dropXmax = dropArea.x() + outerCircle.radius();
+      let dropYmin = dropArea.y() - outerCircle.radius();
+      let dropYmax = dropArea.y() + outerCircle.radius();
 
       if (group.x() > dropXmin && group.x() < dropXmax &&
         group.y() > dropYmin && group.y() < dropYmax) {
@@ -150,7 +154,6 @@ export class Tile extends Konva.Group {
             this.previousLayer.draw();
           }
           layer.draw();
-          console.log(this.position());
           
           // only send public board moves
           if (parent && parent.parent === this.publicBoard.stage) {
@@ -324,10 +327,27 @@ export class Tile extends Konva.Group {
       parentLayer.draw();
     }
 
-    tile.position({ x: this.localBoard.tiles.length * 50, y: 0 });
-    this.localBoard.layers[0].add(tile);
-    this.localBoard.layers[0].draw();
+    // Position the tile at the center of the local board's drop area
+    const dropArea = this.localBoard.dropArea;
+    tile.position({ 
+      x: dropArea.x(),
+      y: dropArea.y()
+    });
+    
+    // Add to the top layer and ensure it's above the drop area
+    const topLayer = this.localBoard.layers[this.localBoard.layers.length - 1];
+    topLayer.add(tile);
+    tile.moveToTop();
+    topLayer.moveToTop();
+    topLayer.draw();
+    
     this.currentBoard = this.localBoard;
+    
+    // Ensure drag state is properly reset
+    tile.draggable(false);
+    setTimeout(() => {
+      tile.draggable(true);
+    }, 0);
   }
 
   moveToPublicBoard() {
@@ -342,14 +362,27 @@ export class Tile extends Konva.Group {
       parentLayer.draw();
     }
 
-    tile.position({ x: this.publicBoard.dropArea.x(), y: this.publicBoard.dropArea.y() });
-    let layers = this.publicBoard.layers;
-    // Get layer with fewer objects
-    let layer = layers.sort(
-      (a: Konva.Layer, b: Konva.Layer) => { return a.getChildren().length - b.getChildren().length })[0];
-    layer.add(tile);
-    layer.draw();
+    // Position the tile at the center of the public board's drop area
+    const dropArea = this.publicBoard.dropArea;
+    tile.position({ 
+      x: dropArea.x(),
+      y: dropArea.y()
+    });
+
+    // Add to the top layer and ensure it's above the drop area
+    const topLayer = this.publicBoard.layers[this.publicBoard.layers.length - 1];
+    topLayer.add(tile);
+    tile.moveToTop();
+    topLayer.moveToTop();
+    topLayer.draw();
+   
     this.currentBoard = this.publicBoard;
+    
+    // Ensure drag state is properly reset
+    tile.draggable(false);
+    setTimeout(() => {
+      tile.draggable(true);
+    }, 0);
   }
 
   isFlipped(): boolean {

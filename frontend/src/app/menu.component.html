@@ -1,6 +1,24 @@
-DominoParty!  
-<button (click)='setup(9)'>Setup 9 Board</button> 
-<button (click)='setup(12)'>Setup 12 Board</button>
- <button (click)='setup(15)'>Setup 15 Board</button>
- | <button (click)='shuffle()'>Shuffle</button>  | 🔍 
-   <button (click)='zoomIn()'>+</button><button (click)='zoomOut()'>-</button>
+<div class="menu-container">
+  <span class="game-title">DominoParty!</span>
+  
+  <div class="button-group">
+    <button class="primary" (click)='setup(9)'>
+      <span>🎲</span> Setup 9 Board
+    </button>
+    <button class="primary" (click)='setup(12)'>
+      <span>🎲</span> Setup 12 Board
+    </button>
+    <button class="primary" (click)='setup(15)'>
+      <span>🎲</span> Setup 15 Board
+    </button>
+    <button class="secondary" (click)='shuffle()'>
+      <span>🔄</span> Shuffle
+    </button>
+  </div>
+
+  <div class="zoom-controls">
+    <span>🔍</span>
+    <button (click)='zoomIn()'>+</button>
+    <button (click)='zoomOut()'>-</button>
+  </div>
+</div>
