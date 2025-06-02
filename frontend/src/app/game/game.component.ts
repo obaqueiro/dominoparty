@@ -8,6 +8,7 @@ import { Board } from './Board';
 import { Tile } from './Tile';
 import { ResizeObserverDirective, ResizeEvent } from './resize-observer.directive';
 import { FloatingControlsComponent } from '../floating-controls/floating-controls.component';
+import { PrivateBoardControlsComponent } from '../private-board-controls/private-board-controls.component';
 
 interface BoardData {
   tiles?: Array<{
@@ -31,7 +32,12 @@ interface BoardData {
 @Component({
   selector: "game-root",
   standalone: true,
-  imports: [CommonModule, ResizeObserverDirective, FloatingControlsComponent],
+  imports: [
+    CommonModule, 
+    ResizeObserverDirective, 
+    FloatingControlsComponent,
+    PrivateBoardControlsComponent
+  ],
   templateUrl: "./game.component.html",
   styleUrls: ["./game.component.scss"]
 })
@@ -760,24 +766,41 @@ export class GameComponent implements AfterViewInit, OnDestroy {
   }
 
   arrangeLocalTiles() {
-    let x = 0;
-    let y = 0;
-    this.localBoard.tiles.forEach(tile => {
-      tile.rotation(0);
-      tile.x(x);
-      tile.y(y);
-      this.localBoard.draw();
-      if (x >= this.localBoard.stage.width()-100) {
-        x = 0;
-        y = y + tile.getClientRect({}).height+10;
-      }
-      else
-      {
-        x += tile.getClientRect({}).width+10;
-      }
+    if (!this.localBoard.tiles.length) return;
 
+    // Calculate tile dimensions (assuming all tiles are the same size)
+    const firstTile = this.localBoard.tiles[0];
+    const tileRect = firstTile.getClientRect({});
+    const tileWidth = tileRect.width;
+    const tileHeight = tileRect.height;
+    const padding = 10; // Space between tiles
+
+    // Calculate how many tiles can fit in a row based on board width
+    const boardWidth = this.localBoard.stage.width();
+    const tilesPerRow = Math.floor((boardWidth - padding) / (tileWidth + padding));
+    
+    // Calculate starting position to center the grid
+    const totalWidth = tilesPerRow * (tileWidth + padding) - padding;
+    const startX = (boardWidth - totalWidth) / 2;
+    const startY = padding;
+
+    // Arrange tiles in a grid
+    this.localBoard.tiles.forEach((tile, index) => {
+      // Reset tile state
+      tile.rotation(0);
+      tile.flipped(false);
+      
+      // Calculate position in grid
+      const row = Math.floor(index / tilesPerRow);
+      const col = index % tilesPerRow;
+      
+      // Set position
+      tile.x(startX + col * (tileWidth + padding));
+      tile.y(startY + row * (tileHeight + padding));
     });
 
+    // Redraw the board
+    this.localBoard.draw();
   }
 
   pieceUpdate(data: {

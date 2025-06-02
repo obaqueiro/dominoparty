@@ -1,4 +1,5 @@
 <floating-controls></floating-controls>
+<private-board-controls></private-board-controls>
 <div class="game-container">
   <div class="mainboard" appResizeObserver (appResizeObserver)="onPublicBoardResize($event)">
     <div id="mainBoard"></div>
@@ -6,7 +7,7 @@
 
   <div class="private-board-container" [class.collapsed]="isPrivateBoardCollapsed">
     <button class="toggle-button" (click)="togglePrivateBoard()">
-      {{ isPrivateBoardCollapsed ? '▲' : '▼' }} Private Board
+    Private Board
     </button>
     <div id="localBoard" class="localboard"></div>
   </div>
