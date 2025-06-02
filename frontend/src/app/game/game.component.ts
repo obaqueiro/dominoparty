@@ -7,7 +7,7 @@ import { MessageService, EventPayload } from "../services/message.service";
 import { Board } from './Board';
 import { Tile } from './Tile';
 import { ResizeObserverDirective, ResizeEvent } from './resize-observer.directive';
-import { MenuComponent } from '../menu.component';
+import { FloatingControlsComponent } from '../floating-controls/floating-controls.component';
 
 interface BoardData {
   tiles?: Array<{
@@ -31,7 +31,7 @@ interface BoardData {
 @Component({
   selector: "game-root",
   standalone: true,
-  imports: [CommonModule, ResizeObserverDirective, MenuComponent],
+  imports: [CommonModule, ResizeObserverDirective, FloatingControlsComponent],
   templateUrl: "./game.component.html",
   styleUrls: ["./game.component.scss"]
 })
@@ -860,13 +860,16 @@ export class GameComponent implements AfterViewInit, OnDestroy {
 
   private updateBoardDimensions() {
     const winDim = this.getViewDimensions();
-    const privateBoardHeight = this.isPrivateBoardCollapsed ? 40 : 200;
+    const containerHeight = winDim.height; // No need to account for menu height anymore
+    const privateBoardHeight = this.isPrivateBoardCollapsed ? 40 : Math.min(containerHeight * 0.4, containerHeight - 200);
     
-    this.publicBoard.stage.width(winDim.width);
-    this.publicBoard.stage.height(winDim.height - privateBoardHeight);
+    // Update public board dimensions
+    this.publicBoard.stage.width(winDim.width - 20); // Account for padding
+    this.publicBoard.stage.height(containerHeight - privateBoardHeight - 20); // Account for gap
     
-    this.localBoard.stage.width(winDim.width);
-    this.localBoard.stage.height(privateBoardHeight - 40); // Account for padding and margins
+    // Update private board dimensions
+    this.localBoard.stage.width(winDim.width - 20); // Account for padding
+    this.localBoard.stage.height(privateBoardHeight - 50); // Account for toggle button and padding
     
     this.publicBoard.draw();
     this.localBoard.draw();
