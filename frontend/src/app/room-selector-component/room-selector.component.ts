@@ -1,21 +1,22 @@
-import { Component, OnInit } from '@angular/core';
+import { Component } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'room-selector-component',
+  standalone: true,
+  imports: [CommonModule, FormsModule],
   templateUrl: './room-selector.component.html',
   styleUrls: ['./room-selector.component.scss']
 })
-export class RoomSelectorComponent implements OnInit {
-  roomName: string;
+export class RoomSelectorComponent {
+  roomName: string = '';
 
-  constructor() { }
+  constructor(private router: Router) {}
 
-  ngOnInit(): void {
+  onRoomButtonClick(): void {
+    console.log('Navigating to room:', this.roomName);
+    this.router.navigate(['/' + this.roomName]);
   }
-
-  onRoomButtonClick() {
-    console.log(this.roomName);
-    window.location.href = '/' + this.roomName;
-  }
-
 }

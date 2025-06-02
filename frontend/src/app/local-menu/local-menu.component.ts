@@ -1,20 +1,18 @@
-import { Component, OnInit } from '@angular/core';
+import { Component } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { MessageService } from '../services/message.service';
 
 @Component({
   selector: 'local-menu',
+  standalone: true,
+  imports: [CommonModule],
   templateUrl: './local-menu.component.html',
   styleUrls: ['./local-menu.component.scss']
 })
-export class LocalMenuComponent implements OnInit {
+export class LocalMenuComponent {
+  constructor(private messageService: MessageService) {}
 
-  constructor(private messageService: MessageService) { }
-
-  ngOnInit(): void {
-
-  }
-
-  onArrangeTiles() {
-    this.messageService.updateMessage(JSON.stringify({event:'arrangeLocalTiles'}));
+  onArrangeTiles(): void {
+    this.messageService.updateMessage(JSON.stringify({event: 'arrangeLocalTiles'}));
   }
 }

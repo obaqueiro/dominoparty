@@ -1,28 +1,30 @@
 import Konva from "konva";
 
 export class TransformerSingleton {
-  private static activeTransformer: Konva.Transformer;
+  private static instance: TransformerSingleton;
+  private static _activeTransformer: Konva.Transformer | null = null;
 
   private constructor() { }
 
-  static getInstance() {
-    if (!TransformerSingleton.activeTransformer) {
-      TransformerSingleton.activeTransformer = new Konva.Transformer;
+  static getInstance(): TransformerSingleton {
+    if (!TransformerSingleton.instance) {
+      TransformerSingleton.instance = new TransformerSingleton();
     }
-    return TransformerSingleton.activeTransformer;
+    return TransformerSingleton.instance;
   }
 
-  static setInstance(newTransformer: Konva.Transformer) {
-    TransformerSingleton.destroy();
-    TransformerSingleton.activeTransformer = newTransformer;
+  static get activeTransformer(): Konva.Transformer | null {
+    return TransformerSingleton._activeTransformer;
   }
 
-  static destroy() {
-    if (TransformerSingleton.activeTransformer) {
-      let layer = TransformerSingleton.activeTransformer.getLayer();
-      TransformerSingleton.activeTransformer.destroy();
-      layer.draw();
-      TransformerSingleton.activeTransformer = null;
+  static set activeTransformer(transformer: Konva.Transformer | null) {
+    if (TransformerSingleton._activeTransformer) {
+      const layer = TransformerSingleton._activeTransformer.getLayer();
+      if (layer) {
+        layer.draw();
+      }
+      TransformerSingleton._activeTransformer.destroy();
     }
+    TransformerSingleton._activeTransformer = transformer;
   }
 }

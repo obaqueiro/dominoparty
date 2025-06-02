@@ -1,11 +1,19 @@
-FROM node:12
+FROM node:18-alpine
 
 WORKDIR /usr/src/app
 
-copy package*.json  ./
+# Install nodemon globally
+RUN npm install -g nodemon ts-node
+
+# Copy package files
+COPY package*.json ./
+
+# Install dependencies
 RUN npm install
-RUN npm install -g ts-node
+
 COPY . .
+# We don't copy the source code here anymore as it will be mounted as a volume
 EXPOSE 3000
 
-CMD ["ts-node", "app/app.ts"]
+# Use nodemon to watch for changes
+CMD ["nodemon", "--watch", "app", "--ext", "ts", "--exec", "ts-node", "app/app.ts"]

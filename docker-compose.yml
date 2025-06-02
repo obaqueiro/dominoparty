@@ -4,8 +4,11 @@ services:
  backend:
    build:
      context: backend
+     dockerfile: Dockerfile
    ports:
       - "3000:3000"
+   environment:
+     - NODE_ENV=development
    restart: on-failure
 
  redis:
@@ -19,4 +22,16 @@ services:
 
     environment:
      - REDIS_REPLICATION_MODE=master
+
+ frontend:
+   build:
+     context: frontend
+     dockerfile: Dockerfile
+   ports:
+     - "4200:4200"
+   environment:
+     - NODE_ENV=development
+   depends_on:
+     - backend
+   restart: on-failure
 

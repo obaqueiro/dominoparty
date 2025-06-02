@@ -1,37 +1,63 @@
 import { Board } from './Board';
 import Konva from "konva";
 import { TransformerSingleton } from './TransformerSingleton';
-import { BaseLayer } from 'konva/types/BaseLayer';
+
+interface DotSpec {
+  color: string;
+  coords: Array<{ x: number; y: number }>;
+  size: number;
+}
+
+interface DotSpecs {
+  [key: number]: DotSpec;
+}
 
 export class Tile extends Konva.Group {
   localBoard: Board;
   publicBoard: Board;
   currentBoard: Board;
-  previousLayer: BaseLayer;
-  actionUpdate: Function;
+  previousLayer: Konva.Layer | null = null;
+  actionUpdate: (data: {
+    flipped?: boolean;
+    rotation?: number;
+    x?: number;
+    action?: string;
+    y: number;
+    name: string;
+  }) => void;
+  top: number;
+  bottom: number;
 
   constructor(options: {
-    top: number,
-    bottom: number,
-    localBoard: Board,
-    publicBoard: Board,
-    currentBoard: Board,
-    actionUpdate: Function
+    top: number;
+    bottom: number;
+    localBoard: Board;
+    publicBoard: Board;
+    currentBoard: Board;
+    actionUpdate: (data: {
+      flipped?: boolean;
+      rotation?: number;
+      x?: number;
+      action?: string;
+      y: number;
+      name: string;
+    }) => void;
   }) {
     super();
     let group = this;
-    let bottom = options.bottom;
-    let top = options.top;
+    this.top = options.top;
+    this.bottom = options.bottom;
     this.localBoard = options.localBoard;
     this.publicBoard = options.publicBoard;
     this.currentBoard = options.currentBoard;
+    this.actionUpdate = options.actionUpdate;
 
     this.position({ x: 0, y: 0 });
     this.draggable(true);
-    this.name(`${top}x${bottom}`)
-    this.actionUpdate = options.actionUpdate;
-    group.add(this.generateTileSquare(0, 0, top));
-    let bottomTile = this.generateTileSquare(0, 40, bottom);
+    this.name(`${this.top}x${this.bottom}`)
+
+    group.add(this.generateTileSquare(0, 0, this.top));
+    let bottomTile = this.generateTileSquare(0, 40, this.bottom);
     bottomTile.offset({ x: 40, y: 40 });
     bottomTile.rotation(180);
     group.add(bottomTile);
@@ -47,109 +73,9 @@ export class Tile extends Konva.Group {
       name: 'backFace'
     }));
 
-
     group.on('transformend', () => {
-      if (this.parent.parent == this.publicBoard.stage) {
-        this.actionUpdate({
-          name: group.name(),
-          action: 'move',
-          x: group.x(),
-          y: group.y(),
-          rotation: group.rotation()
-        });
-      }
-    });
-
-    group.on('dragstart', () => {
-      TransformerSingleton.destroy();
-      group.moveToTop();
-      let layer = group.getLayer();
-      group.moveTo(group.currentBoard.dragLayer);
-      layer.batchDraw();
-      this.previousLayer = layer;
-    });
-
-    group.on('dragend', () => {
-      let dropArea: Konva.Circle;
-      // If it is in the local board, then we check for the local board drop area
-      if (this.parent.parent == this.localBoard.stage) {
-        dropArea = this.localBoard.dropArea;
-      }
-      else {
-        dropArea = this.publicBoard.dropArea;
-      }
-      // otherwise check for the public droparea
-      let dropXmin = dropArea.x() - dropArea.radius();
-      let dropXmax = dropArea.x() + dropArea.radius();
-      let dropYmin = dropArea.y() - dropArea.radius();
-      let dropYmax = dropArea.y() + dropArea.radius();
-
-      if (group.x() > dropXmin && group.x() < dropXmax &&
-        group.y() > dropYmin && group.y() < dropYmax) {
-        if (dropArea == this.publicBoard.dropArea) {
-          this.moveToLocalBoard();
-          this.actionUpdate({
-            name: group.name(),
-            action: 'destroy',
-            x: group.x(),
-            y: group.y(),
-            rotation: group.rotation()
-          });
-        }
-        else {
-          this.moveToPublicBoard();
-          this.actionUpdate({
-            name: group.name(),
-            action: 'create',
-            x: group.x(),
-            y: group.y(),
-            rotation: group.rotation()
-          });
-
-        }
-      } else {  // simply move around board
-        let layer = group.getLayer();
-        let {x,y} = this.getClientRect({});
-        
-        this.y(y < 0 ? this.y()+(-y) : this.y());
-        this.x(x < 0 ?  this.x()+ (-x) : this.x());
-        group.moveTo(this.previousLayer);
-        layer.moveToTop();
-        group.moveToTop();
-        this.previousLayer.draw();
-        layer.draw();
-        console.log(this.position());
-        
-        // only send public board moves
-        if (this.parent.parent == this.publicBoard.stage) {
-          this.actionUpdate({
-            name: group.name(),
-            action: 'move',
-            x: group.x(),
-            y: group.y(),
-            rotation: group.rotation(),
-            flipped: this.isFlipped()
-          });
-        }
-      }
-    });
-    group.on('hide', () => {
-      let back = group.findOne('.backFace');
-      back.visible(true);
-    })
-    group.on('show', () => {
-      let back = group.findOne('.backFace');
-      back.visible(false);
-    });
-    group.on('flip', () => {
-      let back = group.findOne('.backFace');
-      if (back.visible()) {
-        back.visible(false);
-      }
-      else {
-        back.visible(true);
-      }
-      if (this.parent.parent == this.publicBoard.stage) {
+      const parent = this.parent;
+      if (parent && parent.parent === this.publicBoard.stage) {
         this.actionUpdate({
           name: group.name(),
           action: 'move',
@@ -159,10 +85,90 @@ export class Tile extends Konva.Group {
           flipped: this.isFlipped()
         });
       }
-      group.parent.draw();
     });
+
+    group.on('dragstart', () => {
+      TransformerSingleton.activeTransformer = null;
+      group.moveToTop();
+      const layer = group.getLayer();
+      if (layer) {
+        group.moveTo(group.currentBoard.dragLayer);
+        layer.batchDraw();
+        this.previousLayer = layer;
+      }
+    });
+
+    group.on('dragend', () => {
+      let dropArea: Konva.Circle;
+      const parent = this.parent;
+      // If it is in the local board, then we check for the local board drop area
+      if (parent && parent.parent === this.localBoard.stage) {
+        dropArea = this.localBoard.dropArea;
+      } else {
+        dropArea = this.publicBoard.dropArea;
+      }
+
+      let dropXmin = dropArea.x() - dropArea.radius();
+      let dropXmax = dropArea.x() + dropArea.radius();
+      let dropYmin = dropArea.y() - dropArea.radius();
+      let dropYmax = dropArea.y() + dropArea.radius();
+
+      if (group.x() > dropXmin && group.x() < dropXmax &&
+        group.y() > dropYmin && group.y() < dropYmax) {
+        if (dropArea === this.publicBoard.dropArea) {
+          this.moveToLocalBoard();
+          this.actionUpdate({
+            name: group.name(),
+            action: 'destroy',
+            x: group.x(),
+            y: group.y(),
+            rotation: group.rotation(),
+            flipped: this.isFlipped()
+          });
+        } else {
+          this.moveToPublicBoard();
+          this.actionUpdate({
+            name: group.name(),
+            action: 'create',
+            x: group.x(),
+            y: group.y(),
+            rotation: group.rotation(),
+            flipped: this.isFlipped()
+          });
+        }
+      } else {  // simply move around board
+        const layer = group.getLayer();
+        if (layer) {
+          let {x,y} = this.getClientRect({});
+          
+          this.y(y < 0 ? this.y()+(-y) : this.y());
+          this.x(x < 0 ?  this.x()+ (-x) : this.x());
+          group.moveTo(this.previousLayer);
+          layer.moveToTop();
+          group.moveToTop();
+          if (this.previousLayer) {
+            this.previousLayer.draw();
+          }
+          layer.draw();
+          console.log(this.position());
+          
+          // only send public board moves
+          if (parent && parent.parent === this.publicBoard.stage) {
+            this.actionUpdate({
+              name: group.name(),
+              action: 'move',
+              x: group.x(),
+              y: group.y(),
+              rotation: group.rotation(),
+              flipped: this.isFlipped()
+            });
+          }
+        }
+      }
+    });
+
     group.on('click tap', () => {
-      let newTransformer = new Konva.Transformer({
+      const newTransformer = new Konva.Transformer({
         node: group as unknown as Konva.Rect,
         anchorSize: 5,
         borderDash: [3, 3],
@@ -171,25 +177,45 @@ export class Tile extends Konva.Group {
         resizeEnabled: false,
         anchorCornerRadiius: 1,
         anchorStrokeWidth: 3
-      })
-      TransformerSingleton.setInstance(newTransformer);
-      group.parent.add(newTransformer);
-      group.parent.draw();
+      });
+      TransformerSingleton.activeTransformer = newTransformer;
+      const parentLayer = group.parent;
+      if (parentLayer) {
+        parentLayer.add(newTransformer);
+        parentLayer.draw();
+      }
     });
 
     group.on('dblclick dbltap', () => {
-      group.fire('flip', null);
+      const back = group.findOne('.backFace');
+      if (back) {
+        back.visible(!back.visible());
+        const parent = this.parent;
+        if (parent && parent.parent === this.publicBoard.stage) {
+          this.actionUpdate({
+            name: group.name(),
+            action: 'move',
+            x: group.x(),
+            y: group.y(),
+            rotation: group.rotation(),
+            flipped: this.isFlipped()
+          });
+        }
+        const parentLayer = group.parent;
+        if (parentLayer) {
+          parentLayer.draw();
+        }
+      }
     });
     return group;
   }
-
 
   generateTileSquare(x: number, y: number, n: number): Konva.Group {
     let left = 8;
     let right = 32;
     let mid = 20;
 
-    let dotSpecs = {
+    let dotSpecs: DotSpecs = {
       0: { color: '', coords: [], size: 0 },
       1: { color: '#D06C31', coords: [{ x: 20, y: 20 }], size: 4 },
       2: { color: '#B95C81', coords: [{ x: left, y: left }, { x: right, y: right }], size: 4 },
@@ -254,7 +280,6 @@ export class Tile extends Konva.Group {
       },
     }
 
-
     let group = new Konva.Group({
       x: x,
       y: y
@@ -282,18 +307,22 @@ export class Tile extends Konva.Group {
     return group;
   }
 
-
   moveToLocalBoard() {
     let tile = this;
     tile.rotation(0);
-    tile.fire('show', null);
-    let parentLayer = tile.parent;
-    TransformerSingleton.destroy();
+    const back = tile.findOne('.backFace');
+    if (back) {
+      back.visible(false);
+    }
+    const parentLayer = tile.parent;
+    TransformerSingleton.activeTransformer = null;
 
     this.publicBoard.removeTile(tile);
     this.localBoard.addTile(tile);
     tile.remove();
-    parentLayer.draw();
+    if (parentLayer) {
+      parentLayer.draw();
+    }
 
     tile.position({ x: this.localBoard.tiles.length * 50, y: 0 });
     this.localBoard.layers[0].add(tile);
@@ -303,13 +332,15 @@ export class Tile extends Konva.Group {
 
   moveToPublicBoard() {
     let tile = this;
-    let parentLayer = tile.parent;
-    TransformerSingleton.destroy();
+    const parentLayer = tile.parent;
+    TransformerSingleton.activeTransformer = null;
 
-    this.localBoard.removeTile(tile)
+    this.localBoard.removeTile(tile);
     this.publicBoard.addTile(tile);
     tile.remove();
-    parentLayer.draw();
+    if (parentLayer) {
+      parentLayer.draw();
+    }
 
     tile.position({ x: this.publicBoard.dropArea.x(), y: this.publicBoard.dropArea.y() });
     let layers = this.publicBoard.layers;
@@ -321,14 +352,20 @@ export class Tile extends Konva.Group {
     this.currentBoard = this.publicBoard;
   }
 
-  isFlipped() {
-    return this.findOne('.backFace').visible();
+  isFlipped(): boolean {
+    const backFace = this.findOne('.backFace');
+    return backFace ? backFace.visible() : false;
   }
+
   flipped(isFlipped: boolean) {
-    if (isFlipped) {
-      this.fire('hide', null);
+    const back = this.findOne('.backFace');
+    if (back) {
+      back.visible(isFlipped);
+      const parentLayer = this.parent;
+      if (parentLayer) {
+        parentLayer.draw();
+      }
     }
-    else (this.fire('show', null));
   }
 }
 

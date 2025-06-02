@@ -1,10 +1,13 @@
 <menu></menu>
-<div (resized)='onPublicBoardResize($event)' class="mainboard">
-  <div id="mainBoard"></div>
-</div>
+<div class="game-container">
+  <div class="mainboard" appResizeObserver (appResizeObserver)="onPublicBoardResize($event)">
+    <div id="mainBoard"></div>
+  </div>
 
-<local-menu></local-menu>
-<div style="border-color:black" id="localBoard" class="localboard">
-
-
+  <div class="private-board-container" [class.collapsed]="isPrivateBoardCollapsed">
+    <button class="toggle-button" (click)="togglePrivateBoard()">
+      {{ isPrivateBoardCollapsed ? '▲' : '▼' }} Private Board
+    </button>
+    <div id="localBoard" class="localboard"></div>
+  </div>
 </div>
