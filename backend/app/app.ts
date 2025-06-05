@@ -20,7 +20,7 @@ class MainApplication {
       pingInterval: 25000, // 25 seconds
       transports: ['websocket', 'polling'],
       cors: {
-        origin: ['*'],
+        origin: true,
         methods: ["GET", "POST"],
         allowedHeaders: ["Content-Type"],
         credentials: true
