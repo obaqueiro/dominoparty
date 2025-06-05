@@ -6,9 +6,10 @@ services:
      context: backend
      dockerfile: Dockerfile
    ports:
-      - "3000:3000"
+      - "${BACKEND_PORT}:3000"
    environment:
      - NODE_ENV=development
+     - BACKEND_URL=${BACKEND_URL}
    restart: on-failure
 
  redis:
@@ -28,10 +29,12 @@ services:
      context: frontend
      dockerfile: Dockerfile
    ports:
-     - "4200:4200"
+     - "${FRONTEND_PORT}:4200"
    environment:
      - NODE_ENV=development
    depends_on:
      - backend
    restart: on-failure
-
+   environment:
+     - BACKEND_URL=${BACKEND_URL}
+     
