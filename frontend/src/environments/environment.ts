@@ -4,7 +4,7 @@
 
 export const environment = {
   production: false,
-  backendUrl: 'http://127.0.0.1:3000'
+  backendUrl: process.env['BACKEND_URL'] || 'http://127.0.0.1:3000'
 };
 
 /*
