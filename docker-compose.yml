@@ -32,9 +32,8 @@ services:
      - "${FRONTEND_PORT}:4200"
    environment:
      - NODE_ENV=development
+     - BACKEND_URL=${BACKEND_URL}
    depends_on:
      - backend
    restart: on-failure
-   environment:
-     - BACKEND_URL=${BACKEND_URL}
      
