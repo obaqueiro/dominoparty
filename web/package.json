@@ -1,0 +1,26 @@
+{
+  "name": "dominoparty-web",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "e2e": "node e2e/smoke.mjs"
+  },
+  "dependencies": {
+    "pixi.js": "^8.20.0",
+    "y-protocols": "^1.0.7",
+    "y-websocket": "^3.1.0",
+    "yjs": "^13.6.32"
+  },
+  "devDependencies": {
+    "playwright": "^1.62.1",
+    "typescript": "^7.0.2",
+    "vite": "^8.2.2",
+    "vitest": "^4.1.11",
+    "ws": "^8.21.3"
+  }
+}

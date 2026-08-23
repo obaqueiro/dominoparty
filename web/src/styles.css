@@ -1,0 +1,41 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { height: 100%; overflow: hidden; font-family: system-ui, sans-serif; }
+
+[hidden] { display: none !important; }
+
+#lobby {
+  height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, #2c3e50, #4ca1af);
+}
+.lobby-card {
+  background: rgba(255, 255, 255, 0.95);
+  padding: 2rem 2.5rem; border-radius: 12px;
+  display: flex; flex-direction: column; gap: 0.8rem; min-width: 280px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+}
+.lobby-card h1 { text-align: center; margin-bottom: 0.5rem; color: #2c3e50; }
+.lobby-card input {
+  padding: 0.6rem 0.8rem; border: 1px solid #ccc; border-radius: 6px; font-size: 1rem;
+}
+.lobby-card button {
+  padding: 0.7rem; border: none; border-radius: 6px; font-size: 1rem;
+  background: #357abd; color: white; cursor: pointer;
+}
+.lobby-card button:hover { background: #2c6aa8; }
+
+#game { height: 100%; display: flex; flex-direction: column; }
+#toolbar {
+  display: flex; align-items: center; gap: 0.4rem; padding: 0.4rem 0.6rem;
+  background: #2c3e50; color: white; flex-wrap: wrap;
+}
+#toolbar button {
+  padding: 0.3rem 0.7rem; border: none; border-radius: 4px;
+  background: #357abd; color: white; cursor: pointer; font-size: 0.85rem;
+}
+#toolbar button:hover { background: #4a90e2; }
+#room-label { font-weight: 600; margin-right: 0.5rem; }
+#players { margin-left: auto; font-size: 0.85rem; display: flex; gap: 0.5rem; }
+.player-chip { padding: 0.1rem 0.5rem; border-radius: 10px; background: #44586e; }
+#stage { flex: 1; position: relative; touch-action: none; }
+#stage canvas { position: absolute; inset: 0; }
