@@ -77,6 +77,7 @@ export class Game {
     this.world.addChild(this.cursors);
 
     this.hand = new HandPanel(this.session.room, this.session.identity.clientId);
+    this.hand.onArrange = () => this.arrangeHand();
     this.app.stage.addChild(this.hand);
     const onResize = () => {
       drawBg();
@@ -98,9 +99,15 @@ export class Game {
     this.g.tiles.observeDeep((events, txn) => this.onTilesChanged(events, txn));
     this.g.pieces.observeDeep(() => this.syncPieces());
     this.fullSync();
+    // `sync` re-fires after every websocket reconnect; only fit the camera the
+    // first time so reconnects don't reset the user's view.
+    let fitted = false;
     this.session.provider.on('sync', () => {
       this.fullSync();
-      this.fitBoard();
+      if (!fitted) {
+        fitted = true;
+        this.fitBoard();
+      }
     });
   }
 

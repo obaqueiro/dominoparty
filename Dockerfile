@@ -8,14 +8,20 @@ RUN npm run build
 
 # Stage 2: server
 FROM rust:1.96-alpine AS builder
-RUN apk add --no-cache musl-dev
+RUN apk add --no-cache musl-dev binutils
 WORKDIR /server
 COPY server/ ./
-RUN cargo build --release
-# The distroless runtime can only run a fully static binary — fail the build here if
-# a dependency ever sneaks in a dynamic link.
-RUN ldd target/release/dominoparty-server 2>&1 \
-    | grep -qi "statically linked\|not a dynamic executable\|not a valid dynamic program" \
+# rust:alpine ships RUSTFLAGS="-C target-feature=-crt-static" (dynamic musl);
+# override it — the distroless/static runtime needs a fully static binary.
+ENV RUSTFLAGS="-C target-feature=+crt-static"
+# Building with an explicit --target keeps RUSTFLAGS off host proc-macros
+# (which cannot be built static).
+RUN target=$(rustc -vV | sed -n 's/host: //p') \
+    && cargo build --release --target "$target" \
+    && cp "target/$target/release/dominoparty-server" target/release/
+# Fail the build if a dependency ever sneaks in a dynamic link (no NEEDED
+# entries means fully static; ldd is unreliable for static-PIE on musl).
+RUN ! readelf -d target/release/dominoparty-server | grep -q NEEDED \
     && mkdir /data
 
 # Stage 3: runtime — static binary + assets only, no shell/package manager
