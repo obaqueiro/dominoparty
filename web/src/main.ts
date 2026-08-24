@@ -30,23 +30,60 @@ async function join(): Promise<void> {
   const session = connect(room, identity);
   const game = new Game(session);
   await game.init(document.getElementById('stage')!);
+  // Debug/e2e hooks.
+  (window as unknown as Record<string, unknown>).__game = game;
+  (window as unknown as Record<string, unknown>).__doc = session.doc;
 
   document.getElementById('room-label')!.textContent = room;
+
+  const menu = document.getElementById('menu')!;
+  const menuBtn = document.getElementById('menu-btn')!;
+  menuBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    menu.hidden = !menu.hidden;
+  });
+  document.addEventListener('pointerdown', (e) => {
+    if (!menu.hidden && !menu.contains(e.target as Node)) menu.hidden = true;
+  });
+  const menuAction = (id: string, fn: () => void) => {
+    document.getElementById(id)!.addEventListener('click', () => {
+      menu.hidden = true;
+      fn();
+    });
+  };
+
+  const toastEl = document.getElementById('toast')!;
+  let toastTimer = 0;
+  const toast = (msg: string) => {
+    toastEl.textContent = msg;
+    toastEl.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = window.setTimeout(() => (toastEl.hidden = true), 1800);
+  };
+
   document.querySelectorAll<HTMLButtonElement>('[data-setup]').forEach((btn) => {
     btn.addEventListener('click', () => {
+      menu.hidden = true;
       if (confirm(`Reset the board with a double-${btn.dataset.setup} set?`)) {
         game.setup(Number(btn.dataset.setup) as 9 | 12 | 15);
       }
     });
   });
-  document.getElementById('shuffle-btn')!.addEventListener('click', () => game.shuffle());
-  document.getElementById('rotate-btn')!.addEventListener('click', () => game.rotateSelected());
-  document.getElementById('arrange-btn')!.addEventListener('click', () => game.arrangeHand());
-  document.getElementById('share-btn')!.addEventListener('click', () => {
-    navigator.clipboard?.writeText(location.href);
+  menuAction('shuffle-btn', () => game.shuffle());
+  menuAction('arrange-btn', () => game.arrangeHand());
+  menuAction('share-btn', async () => {
+    if (navigator.share) {
+      await navigator.share({ title: 'DominoParty', url: location.href }).catch(() => {});
+    } else {
+      await navigator.clipboard?.writeText(location.href);
+      toast('Link copied');
+    }
   });
 
-  // Player list from awareness.
+  document.getElementById('zoom-in')!.addEventListener('click', () => game.zoom(1.25));
+  document.getElementById('zoom-out')!.addEventListener('click', () => game.zoom(1 / 1.25));
+
+  // Player avatars from awareness.
   const playersEl = document.getElementById('players')!;
   const renderPlayers = () => {
     const states = [...session.provider.awareness.getStates().values()];
@@ -55,8 +92,9 @@ async function join(): Promise<void> {
       if (!s?.name) continue;
       const chip = document.createElement('span');
       chip.className = 'player-chip';
-      chip.style.borderLeft = `4px solid ${s.color ?? '#888'}`;
-      chip.textContent = s.name;
+      chip.style.background = s.color ?? '#888';
+      chip.title = s.name;
+      chip.textContent = s.name.charAt(0).toUpperCase();
       playersEl.appendChild(chip);
     }
   };

@@ -2,7 +2,10 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content"
+    />
     <title>DominoParty</title>
     <link rel="stylesheet" href="/src/styles.css" />
   </head>
@@ -18,16 +21,24 @@
     <div id="game" hidden>
       <div id="toolbar">
         <span id="room-label"></span>
-        <button data-setup="9">Setup 9</button>
-        <button data-setup="12">Setup 12</button>
-        <button data-setup="15">Setup 15</button>
+        <span id="players"></span>
+        <button id="menu-btn" aria-label="Menu">☰</button>
+      </div>
+      <div id="menu" hidden>
+        <button data-setup="9">Setup double-9</button>
+        <button data-setup="12">Setup double-12</button>
+        <button data-setup="15">Setup double-15</button>
         <button id="shuffle-btn">Shuffle</button>
-        <button id="rotate-btn" title="Rotate selected (R)">↻</button>
         <button id="arrange-btn">Arrange hand</button>
         <button id="share-btn">Share link</button>
-        <span id="players"></span>
       </div>
-      <div id="stage"></div>
+      <div id="stage">
+        <div id="zoom-controls">
+          <button id="zoom-in" aria-label="Zoom in">＋</button>
+          <button id="zoom-out" aria-label="Zoom out">－</button>
+        </div>
+        <div id="toast" hidden></div>
+      </div>
     </div>
     <script type="module" src="/src/main.ts"></script>
   </body>

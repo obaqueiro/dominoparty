@@ -16,7 +16,7 @@ html, body { height: 100%; overflow: hidden; font-family: system-ui, sans-serif;
 }
 .lobby-card h1 { text-align: center; margin-bottom: 0.5rem; color: #2c3e50; }
 .lobby-card input {
-  padding: 0.6rem 0.8rem; border: 1px solid #ccc; border-radius: 6px; font-size: 1rem;
+  padding: 0.6rem 0.8rem; border: 1px solid #ccc; border-radius: 6px; font-size: 16px;
 }
 .lobby-card button {
   padding: 0.7rem; border: none; border-radius: 6px; font-size: 1rem;
@@ -25,17 +25,63 @@ html, body { height: 100%; overflow: hidden; font-family: system-ui, sans-serif;
 .lobby-card button:hover { background: #2c6aa8; }
 
 #game { height: 100%; display: flex; flex-direction: column; }
+
 #toolbar {
-  display: flex; align-items: center; gap: 0.4rem; padding: 0.4rem 0.6rem;
-  background: #2c3e50; color: white; flex-wrap: wrap;
+  display: flex; align-items: center; gap: 0.5rem;
+  height: calc(44px + env(safe-area-inset-top));
+  padding: env(safe-area-inset-top) 0.6rem 0 0.6rem;
+  background: #2c3e50; color: white;
 }
-#toolbar button {
-  padding: 0.3rem 0.7rem; border: none; border-radius: 4px;
-  background: #357abd; color: white; cursor: pointer; font-size: 0.85rem;
+#room-label { font-weight: 600; }
+#players { margin-left: auto; display: flex; }
+.player-chip {
+  width: 28px; height: 28px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 0.8rem; font-weight: 700; color: white;
+  border: 2px solid #2c3e50; margin-left: -8px;
 }
-#toolbar button:hover { background: #4a90e2; }
-#room-label { font-weight: 600; margin-right: 0.5rem; }
-#players { margin-left: auto; font-size: 0.85rem; display: flex; gap: 0.5rem; }
-.player-chip { padding: 0.1rem 0.5rem; border-radius: 10px; background: #44586e; }
+#menu-btn {
+  width: 44px; height: 38px; border: none; border-radius: 6px;
+  background: #357abd; color: white; font-size: 1.2rem; cursor: pointer;
+}
+
+#menu {
+  position: absolute; z-index: 10;
+  background: #2c3e50; padding: 0.5rem;
+  display: flex; flex-direction: column; gap: 0.4rem;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+}
+#menu button {
+  min-height: 44px; padding: 0 1rem; border: none; border-radius: 6px;
+  background: #357abd; color: white; font-size: 1rem; cursor: pointer; text-align: left;
+}
+#menu button:hover { background: #4a90e2; }
+/* Dropdown on wide screens, bottom sheet on phones. */
+@media (min-width: 600px) {
+  #menu { top: 48px; right: 8px; border-radius: 8px; min-width: 220px; }
+}
+@media (max-width: 599.9px) {
+  #menu {
+    left: 0; right: 0; bottom: 0;
+    border-radius: 12px 12px 0 0;
+    padding-bottom: calc(0.5rem + env(safe-area-inset-bottom));
+  }
+}
+
 #stage { flex: 1; position: relative; touch-action: none; }
 #stage canvas { position: absolute; inset: 0; }
+
+#zoom-controls {
+  position: absolute; right: 10px; bottom: 160px; z-index: 5;
+  display: flex; flex-direction: column; gap: 6px;
+}
+#zoom-controls button {
+  width: 44px; height: 44px; border: none; border-radius: 50%;
+  background: rgba(44, 62, 80, 0.85); color: white; font-size: 1.3rem; cursor: pointer;
+}
+
+#toast {
+  position: absolute; left: 50%; bottom: 170px; transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.8); color: white; padding: 0.5rem 1rem;
+  border-radius: 20px; font-size: 0.9rem; z-index: 20; pointer-events: none;
+}

@@ -13,6 +13,20 @@ function pair(): [state.GameDoc, state.GameDoc, () => void] {
   return [state.gameDoc(a), state.gameDoc(b), sync];
 }
 
+describe('softSnap', () => {
+  it('snaps within tolerance of right angles and normalizes', () => {
+    expect(state.softSnap(0)).toBe(0);
+    expect(state.softSnap(6)).toBe(0);
+    expect(state.softSnap(8)).toBe(8);
+    expect(state.softSnap(85)).toBe(90);
+    expect(state.softSnap(266)).toBe(270);
+    expect(state.softSnap(357)).toBe(0);
+    expect(state.softSnap(-5)).toBe(0);
+    expect(state.softSnap(451)).toBe(90);
+    expect(state.softSnap(45)).toBe(45);
+  });
+});
+
 describe('game state', () => {
   it('generates correct set sizes', () => {
     expect(tileNames(9)).toHaveLength(55);

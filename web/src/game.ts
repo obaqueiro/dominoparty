@@ -13,13 +13,16 @@ const DRAG_SYNC_MS = 33; // ~30 Hz position sync while dragging
 
 interface DragState {
   target: TileView | Container;
-  kind: 'tile' | 'piece';
+  kind: 'tile' | 'piece' | 'rotate';
   name: string;
   fromHand: boolean;
   startGlobal: { x: number; y: number };
   grabOffset: { x: number; y: number };
   moved: boolean;
   lastSync: number;
+  /** rotate-drag only: pointer angle (deg) at drag start and tile rotation at drag start */
+  startPointerAngle?: number;
+  startRotation?: number;
 }
 
 export class Game {
@@ -65,6 +68,7 @@ export class Game {
     drawBg();
     this.app.stage.addChild(bg);
     this.camera = new BoardCamera(this.world, bg as unknown as Container);
+    bg.on('pointertap', () => this.deselect());
     this.app.stage.addChild(this.world);
 
     this.tilesLayer.sortableChildren = true;
@@ -88,14 +92,39 @@ export class Game {
     this.app.stage.on('pointerup', (e) => this.onPointerUp(e));
     this.app.stage.on('pointerupoutside', (e) => this.onPointerUp(e));
 
-    window.addEventListener('keydown', (e) => {
-      if (e.key === 'r' || e.key === 'R') this.rotateSelected();
-    });
+    // Keep the selection gizmo a constant on-screen size across zoom levels.
+    this.app.ticker.add(() => this.selected?.setGizmoScale(this.world.scale.x));
 
     this.g.tiles.observeDeep((events, txn) => this.onTilesChanged(events, txn));
     this.g.pieces.observeDeep(() => this.syncPieces());
     this.fullSync();
-    this.session.provider.on('sync', () => this.fullSync());
+    this.session.provider.on('sync', () => {
+      this.fullSync();
+      this.fitBoard();
+    });
+  }
+
+  /** Fit the current board tiles into view (initial camera for small screens). */
+  private fitBoard(): void {
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const m of this.g.tiles.values()) {
+      const t = state.readTile(m);
+      if (t.owner !== null) continue;
+      minX = Math.min(minX, t.x - 60);
+      minY = Math.min(minY, t.y - 60);
+      maxX = Math.max(maxX, t.x + 60);
+      maxY = Math.max(maxY, t.y + 60);
+    }
+    if (!isFinite(minX)) return;
+    const sw = this.app.screen.width;
+    const sh = this.app.screen.height - 120;
+    const scale = Math.min(1.5, Math.max(0.4, Math.min(sw / (maxX - minX), sh / (maxY - minY))));
+    this.world.scale.set(scale);
+    this.world.position.set(-minX * scale + (sw - (maxX - minX) * scale) / 2, -minY * scale + 10);
+  }
+
+  zoom(factor: number): void {
+    this.camera.zoomBy(factor, this.app.screen.width / 2, this.app.screen.height / 2);
   }
 
   // ---------- doc -> scene ----------
@@ -158,12 +187,13 @@ export class Game {
       this.attachTileEvents(view);
     }
 
-    if (this.drag?.name === name && this.drag.kind === 'tile') return;
+    if (this.drag?.name === name && this.drag.kind !== 'piece') return;
 
     if (mine) {
-      if (view.parent !== this.hand) this.hand.addChild(view);
+      if (this.selected === view) this.deselect();
+      if (view.parent !== this.hand.content) this.hand.content.addChild(view);
       const pos =
-        this.hand.savedPosition(name) ?? this.hand.defaultPosition(this.hand.children.length - 1);
+        this.hand.savedPosition(name) ?? this.hand.defaultPosition(this.hand.content.children.length - 1);
       view.position.set(pos.x, pos.y);
       view.rotation = 0;
       view.setFlipped(false);
@@ -175,6 +205,52 @@ export class Game {
       view.setFlipped(t.flipped);
       view.zIndex = t.z;
     }
+    this.hand.setCount(state.handTiles(this.g, this.session.identity.clientId).length);
+  }
+
+  // ---------- selection gizmo ----------
+
+  private select(view: TileView): void {
+    if (this.selected === view) return;
+    this.deselect();
+    this.selected = view;
+    // Selecting counts as picking the tile up: bring it above neighbors so the gizmo is reachable.
+    const z = state.nextZ(this.g);
+    state.updateTile(this.g, view.tileName, { z }, LOCAL_ORIGIN);
+    view.zIndex = z;
+    view.showGizmo(this.world.scale.x);
+    view.rotateKnob!.removeAllListeners('pointerdown');
+    view.rotateKnob!.on('pointerdown', (e: FederatedPointerEvent) => {
+      if (this.drag) return;
+      e.stopPropagation();
+      const center = view.parent!.toGlobal(view.position);
+      this.drag = {
+        target: view,
+        kind: 'rotate',
+        name: view.tileName,
+        fromHand: false,
+        startGlobal: { x: center.x, y: center.y },
+        grabOffset: { x: 0, y: 0 },
+        moved: true,
+        lastSync: 0,
+        startPointerAngle:
+          (Math.atan2(e.global.y - center.y, e.global.x - center.x) * 180) / Math.PI,
+        startRotation: (this.g.tiles.get(view.tileName)?.get('rotation') as number) ?? 0,
+      };
+    });
+    view.flipButton!.removeAllListeners('pointertap');
+    view.flipButton!.on('pointertap', (e: FederatedPointerEvent) => {
+      e.stopPropagation();
+      const flipped = !(this.g.tiles.get(view.tileName)?.get('flipped') as boolean);
+      state.updateTile(this.g, view.tileName, { flipped }, LOCAL_ORIGIN);
+    });
+    // Presses on the gizmo buttons must not start a move-drag on the tile.
+    view.flipButton!.on('pointerdown', (e: FederatedPointerEvent) => e.stopPropagation());
+  }
+
+  private deselect(): void {
+    if (this.selected && !this.selected.destroyed) this.selected.hideGizmo();
+    this.selected = null;
   }
 
   private syncPieces(): void {
@@ -197,7 +273,7 @@ export class Game {
     view.on('pointerdown', (e: FederatedPointerEvent) => {
       if (this.drag) return;
       e.stopPropagation();
-      const fromHand = view.parent === this.hand;
+      const fromHand = view.parent === this.hand.content;
       const local = view.parent!.toLocal(e.global);
       this.drag = {
         target: view,
@@ -234,10 +310,25 @@ export class Game {
     this.publishCursor(e);
     const d = this.drag;
     if (!d) return;
+
+    if (d.kind === 'rotate') {
+      const angle =
+        (Math.atan2(e.global.y - d.startGlobal.y, e.global.x - d.startGlobal.x) * 180) / Math.PI;
+      const rotation = state.softSnap((d.startRotation ?? 0) + angle - (d.startPointerAngle ?? 0));
+      (d.target as TileView).rotation = (rotation * Math.PI) / 180;
+      const now = performance.now();
+      if (now - d.lastSync > DRAG_SYNC_MS) {
+        d.lastSync = now;
+        state.updateTile(this.g, d.name, { rotation }, LOCAL_ORIGIN);
+      }
+      return;
+    }
+
     if (!d.moved) {
       const dist = Math.hypot(e.global.x - d.startGlobal.x, e.global.y - d.startGlobal.y);
       if (dist < DRAG_THRESHOLD) return;
       d.moved = true;
+      this.deselect();
       if (d.kind === 'tile') {
         const z = state.nextZ(this.g);
         state.updateTile(this.g, d.name, { z }, LOCAL_ORIGIN);
@@ -245,7 +336,7 @@ export class Game {
         this.setAwareness({ draggingTile: d.name });
       }
       // Dragging out of the hand: reparent to the world so it follows world coords.
-      if (d.fromHand && d.target.parent === this.hand) {
+      if (d.fromHand && d.target.parent === this.hand.content) {
         const world = this.camera.toWorld(e.global.x, e.global.y);
         this.tilesLayer.addChild(d.target);
         d.target.position.set(world.x, world.y);
@@ -259,7 +350,7 @@ export class Game {
 
     // Throttled live sync for board pieces/tiles.
     const now = performance.now();
-    if (parent !== this.hand && now - d.lastSync > DRAG_SYNC_MS) {
+    if (parent !== this.hand.content && now - d.lastSync > DRAG_SYNC_MS) {
       d.lastSync = now;
       if (d.kind === 'tile' && !d.fromHand) {
         state.updateTile(this.g, d.name, { x: d.target.x, y: d.target.y }, LOCAL_ORIGIN);
@@ -274,8 +365,15 @@ export class Game {
     if (!d) return;
     this.drag = null;
 
+    if (d.kind === 'rotate') {
+      const rotation = (((d.target as TileView).rotation * 180) / Math.PI + 360) % 360;
+      state.updateTile(this.g, d.name, { rotation: state.softSnap(rotation) }, LOCAL_ORIGIN);
+      return;
+    }
+
     if (!d.moved) {
       if (d.kind === 'tile') this.onTileTap(d.target as TileView);
+      else this.deselect();
       return;
     }
 
@@ -289,9 +387,10 @@ export class Game {
 
     if (inHandZone) {
       // Draw to hand (or move within hand).
-      const handLocal = this.hand.toLocal(e.global);
+      const handLocal = this.hand.toContentLocal(e.global.x, e.global.y);
       const pos = { x: handLocal.x - d.grabOffset.x, y: handLocal.y - d.grabOffset.y };
-      this.hand.addChild(d.target);
+      this.hand.flashOpen();
+      this.hand.content.addChild(d.target);
       d.target.position.set(pos.x, pos.y);
       (d.target as TileView).rotation = 0;
       this.hand.savePosition(d.name, pos.x, pos.y);
@@ -323,22 +422,12 @@ export class Game {
       }
       return;
     }
-    // Single tap: select for rotation.
-    if (this.selected && !this.selected.destroyed) this.selected.setHighlight(false);
+    // Single tap: toggle selection (rotate/flip gizmo). Board tiles only.
     if (this.selected === view) {
-      this.selected = null;
-    } else {
-      this.selected = view;
-      view.setHighlight(true);
+      this.deselect();
+    } else if (view.parent === this.tilesLayer) {
+      this.select(view);
     }
-  }
-
-  rotateSelected(): void {
-    const view = this.selected;
-    if (!view || view.destroyed || view.parent !== this.tilesLayer) return;
-    const cur = (this.g.tiles.get(view.tileName)?.get('rotation') as number) ?? 0;
-    const next = (Math.round(cur / 90) * 90 + 90) % 360;
-    state.updateTile(this.g, view.tileName, { rotation: next }, LOCAL_ORIGIN);
   }
 
   arrangeHand(): void {
@@ -346,7 +435,7 @@ export class Game {
     const positions = this.hand.arrange(names);
     for (const [name, pos] of Object.entries(positions)) {
       const view = this.tileViews.get(name);
-      if (view && view.parent === this.hand) view.position.set(pos.x, pos.y);
+      if (view && view.parent === this.hand.content) view.position.set(pos.x, pos.y);
     }
   }
 

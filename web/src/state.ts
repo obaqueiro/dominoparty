@@ -44,7 +44,6 @@ export const TRAIN_COUNT = 8;
 export function setup(g: GameDoc, setSize: 9 | 12 | 15, origin?: unknown): void {
   g.doc.transact(() => {
     g.meta.set('setSize', setSize);
-    g.meta.set('zCounter', 0);
     if (!g.meta.get('createdAt')) g.meta.set('createdAt', Date.now());
 
     for (const key of [...g.tiles.keys()]) g.tiles.delete(key);
@@ -60,6 +59,7 @@ export function setup(g: GameDoc, setSize: 9 | 12 | 15, origin?: unknown): void 
       t.set('owner', null);
       g.tiles.set(name, t);
     });
+    g.meta.set('zCounter', names.length);
 
     const center = new Y.Map<unknown>();
     center.set('x', 900);
@@ -85,6 +85,16 @@ export function shuffle(g: GameDoc, origin?: unknown): void {
       t.set('flipped', true);
     }
   }, origin);
+}
+
+export const SNAP_TOLERANCE_DEG = 7;
+
+/** Normalize to [0,360) and magnetically snap angles within tolerance of a right angle. */
+export function softSnap(angleDeg: number, tolerance = SNAP_TOLERANCE_DEG): number {
+  const norm = ((angleDeg % 360) + 360) % 360;
+  const nearest = (Math.round(norm / 90) * 90) % 360;
+  const dist = Math.min(Math.abs(norm - nearest), 360 - Math.abs(norm - nearest));
+  return dist <= tolerance ? nearest : norm;
 }
 
 export function nextZ(g: GameDoc): number {
