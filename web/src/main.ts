@@ -69,7 +69,9 @@ async function join(): Promise<void> {
       }
     });
   });
-  menuAction('shuffle-btn', () => game.shuffle());
+  menuAction('shuffle-btn', () => {
+    if (confirm('Shuffle all tiles on the board face-down? Tiles in hands are kept.')) game.shuffle();
+  });
   menuAction('arrange-btn', () => game.arrangeHand());
   menuAction('share-btn', async () => {
     if (navigator.share) {
@@ -85,20 +87,44 @@ async function join(): Promise<void> {
 
   // Player avatars from awareness.
   const playersEl = document.getElementById('players')!;
+  const handCounts = () => {
+    const counts = new Map<string, number>();
+    for (const t of session.tiles.values()) {
+      const owner = t.get('owner') as string | null;
+      if (owner != null) counts.set(owner, (counts.get(owner) ?? 0) + 1);
+    }
+    return counts;
+  };
   const renderPlayers = () => {
     const states = [...session.provider.awareness.getStates().values()];
+    const counts = handCounts();
     playersEl.innerHTML = '';
-    for (const s of states as Array<{ name?: string; color?: string }>) {
+    for (const s of states as Array<{ clientId?: string; name?: string; color?: string }>) {
       if (!s?.name) continue;
+      const wrap = document.createElement('span');
+      wrap.className = 'player';
       const chip = document.createElement('span');
       chip.className = 'player-chip';
       chip.style.background = s.color ?? '#888';
       chip.title = s.name;
       chip.textContent = s.name.charAt(0).toUpperCase();
-      playersEl.appendChild(chip);
+      wrap.appendChild(chip);
+      const count = document.createElement('span');
+      count.className = 'player-count';
+      count.textContent = String(s.clientId ? counts.get(s.clientId) ?? 0 : 0);
+      wrap.appendChild(count);
+      playersEl.appendChild(wrap);
     }
   };
   session.provider.awareness.on('change', renderPlayers);
+  // Tiles change at ~30 Hz during drags; only re-render when hand counts change.
+  let lastCounts = '';
+  session.tiles.observeDeep(() => {
+    const key = JSON.stringify([...handCounts().entries()].sort());
+    if (key === lastCounts) return;
+    lastCounts = key;
+    renderPlayers();
+  });
   renderPlayers();
 }
 
