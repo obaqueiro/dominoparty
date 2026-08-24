@@ -1,39 +1,13 @@
-version: "3.2"
 services:
-  
- backend:
-   build:
-     context: backend
-     dockerfile: Dockerfile
-   ports:
-      - "${BACKEND_PORT}:3000"
-   environment:
-     - NODE_ENV=development
-     - BACKEND_URL=${BACKEND_URL}
-   restart: on-failure
-
- redis:
-    image: "redis:alpine"
-
-    command: redis-server 
-
+  app:
+    build: .
+    ports:
+      - "3001:3000"
     volumes:
-     - $PWD/redis-data:/var/lib/redis
-     - $PWD/redis.conf:/usr/local/etc/redis/redis.conf
+      - db-data:/data
+    restart: unless-stopped
+    # Graceful stop lets the server flush all rooms to SQLite.
+    stop_grace_period: 15s
 
-    environment:
-     - REDIS_REPLICATION_MODE=master
-
- frontend:
-   build:
-     context: frontend
-     dockerfile: Dockerfile
-   ports:
-     - "${FRONTEND_PORT}:4200"
-   environment:
-     - NODE_ENV=development
-     - BACKEND_URL=${BACKEND_URL}
-   depends_on:
-     - backend
-   restart: on-failure
-     
+volumes:
+  db-data:
