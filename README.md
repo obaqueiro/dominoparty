@@ -36,7 +36,7 @@ docker compose up --build
 # open http://localhost:3000, pick a name and a room code
 ```
 
-The runtime image is distroless (`gcr.io/distroless/static-debian12:nonroot`): a single static binary plus the built frontend — no shell, no package manager. There is no `sh` in the container, so debug from outside (logs, volume mounts). Room snapshots persist in the `db-data` volume; if a volume was created by a pre-distroless image, fix its ownership once with `docker run --rm -v dominoparty_db-data:/data alpine chown -R 65532:65532 /data`. Configuration (env): `PORT`, `DB_PATH`, `STATIC_DIR`, `FLUSH_INTERVAL_SECS` (10), `IDLE_EVICT_SECS` (600), `PRUNE_AFTER_DAYS` (30, 0 = never prune).
+The runtime image is distroless (`gcr.io/distroless/static-debian12:nonroot`): a single static binary plus the built frontend — no shell, no package manager. There is no `sh` in the container, so debug from outside (logs, volume mounts). To put it behind nginx on a domain, see `deploy/sites-available.nginx` — the only special requirement is websocket upgrade forwarding on `/ws/`. Room snapshots persist in the `db-data` volume; if a volume was created by a pre-distroless image, fix its ownership once with `docker run --rm -v dominoparty_db-data:/data alpine chown -R 65532:65532 /data`. Configuration (env): `PORT`, `DB_PATH`, `STATIC_DIR`, `FLUSH_INTERVAL_SECS` (10), `IDLE_EVICT_SECS` (600), `PRUNE_AFTER_DAYS` (30, 0 = never prune).
 
 ## Controls
 

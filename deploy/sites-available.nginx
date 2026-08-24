@@ -1,0 +1,47 @@
+# nginx site config for DominoParty (e.g. /etc/nginx/sites-available/domino.baqueiro.com)
+#
+# The app container serves everything on one port — static frontend, /health,
+# and the Yjs sync websocket under /ws/ — so nginx only reverse-proxies to it.
+# Adjust server_name and the upstream port (docker-compose maps host 3001 -> container 3000).
+#
+# Enable:   ln -s /etc/nginx/sites-available/domino.baqueiro.com /etc/nginx/sites-enabled/
+#           nginx -t && systemctl reload nginx
+# HTTPS:    certbot --nginx -d domino.baqueiro.com
+#           (the frontend derives ws:// vs wss:// from the page origin, so no app change needed)
+# Verify:   curl http://domino.baqueiro.com/health   -> "ok"
+#           join the same room from two browsers -> both avatars appear in the top bar
+#           (that proves the websocket upgrade path works)
+
+# Only send "Connection: upgrade" on actual websocket upgrade requests.
+map $http_upgrade $connection_upgrade {
+    default upgrade;
+    ''      close;
+}
+
+server {
+    server_name domino.baqueiro.com;
+    listen 80;
+
+    # Static frontend + /health
+    location / {
+        proxy_pass http://127.0.0.1:3001;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Yjs sync websocket — without the Upgrade/Connection headers the page loads
+    # but rooms never sync.
+    location /ws/ {
+        proxy_pass http://127.0.0.1:3001;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+
+        # Long-lived connections: don't let nginx kill idle games (default is 60s).
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+    }
+}
