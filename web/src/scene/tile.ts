@@ -16,6 +16,22 @@ function makeGizmoButton(glyph: string, color: number): Container {
   return c;
 }
 
+/**
+ * The dashed outline shown at the slot a dragged tile will drop into. Drawn
+ * centred on its own origin so it can be positioned and rotated like a tile.
+ */
+export function makeGhostTile(): Graphics {
+  const g = new Graphics();
+  g.roundRect(-TILE_W / 2, -TILE_H / 2, TILE_W, TILE_H, 4)
+    .fill({ color: 0xffffff, alpha: 0.12 })
+    .stroke({ color: 0xffffff, width: 2, alpha: 0.85 });
+  g.moveTo(-TILE_W / 2 + 3, 0)
+    .lineTo(TILE_W / 2 - 3, 0)
+    .stroke({ color: 0xffffff, width: 1.5, alpha: 0.6 });
+  g.visible = false;
+  return g;
+}
+
 /** Lazily-built shared textures: one face per (top,bottom) pair value, one back. */
 export class TileTextures {
   private halves = new Map<number, Texture>();
@@ -60,6 +76,9 @@ export class TileView extends Container {
   gizmo: Container | null = null;
   rotateKnob: Container | null = null;
   flipButton: Container | null = null;
+  handButton: Container | null = null;
+  boardButton: Container | null = null;
+  private gizmoStem: Graphics | null = null;
 
   constructor(name: string, textures: TileTextures) {
     super();
@@ -88,8 +107,12 @@ export class TileView extends Container {
     this.cursor = 'pointer';
   }
 
-  /** Show the rotate-knob + flip-button gizmo. `worldScale` counter-scales for constant screen size. */
-  showGizmo(worldScale: number): void {
+  /**
+   * Show the selection gizmo. `worldScale` counter-scales it for constant
+   * screen size. Board tiles get rotate / flip / to-hand; hand tiles are drawn
+   * face-up, so they get rotate plus the play-to-board button.
+   */
+  showGizmo(worldScale: number, inHand = false): void {
     if (!this.gizmo) {
       this.gizmo = new Container();
       this.rotateKnob = makeGizmoButton('↻', 0x357abd);
@@ -99,10 +122,18 @@ export class TileView extends Container {
       // Stem connecting tile to the knob, like the legacy transformer anchor.
       const stem = new Graphics();
       stem.moveTo(TILE_W / 2, -2).lineTo(TILE_W / 2, -12).stroke({ color: 0x357abd, width: 2 });
-      this.gizmo.addChild(stem, this.rotateKnob, this.flipButton);
+      this.handButton = makeGizmoButton('🤏', 0x388e3c);
+      this.handButton.position.set(-26, TILE_H / 2);
+      this.boardButton = makeGizmoButton('⬆', 0xd06c31);
+      this.boardButton.position.set(-26, TILE_H / 2);
+      this.gizmoStem = stem;
+      this.gizmo.addChild(stem, this.rotateKnob, this.flipButton, this.handButton, this.boardButton);
       this.addChild(this.gizmo);
     }
     this.gizmo.visible = true;
+    this.flipButton!.visible = !inHand;
+    this.handButton!.visible = !inHand;
+    this.boardButton!.visible = inHand;
     this.setGizmoScale(worldScale);
     this.setHighlight(true);
   }
@@ -116,6 +147,8 @@ export class TileView extends Container {
     const s = Math.max(1, 1 / worldScale);
     this.rotateKnob?.scale.set(s);
     this.flipButton?.scale.set(s);
+    this.handButton?.scale.set(s);
+    this.boardButton?.scale.set(s);
   }
 
   setFlipped(flipped: boolean): void {

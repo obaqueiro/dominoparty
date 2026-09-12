@@ -1,18 +1,27 @@
 import { Container, Graphics, Text } from 'pixi.js';
 import { TILE_H, TILE_W } from '../pips';
 
-export const TAB_HEIGHT = 30;
+export const TAB_HEIGHT = 48;
 const MIN_ZOOM = 0.3;
 const MAX_ZOOM = 2.5;
+/** Touch-target size of the tab-bar buttons. */
+const BTN_W = 46;
+const BTN_H = 38;
+const BTN_GAP = 8;
+const EDGE_PAD = 8;
+const MIN_PANEL = 70;
+/** Drag must exceed this before a bar press counts as a resize (vs. a stray tap). */
+const RESIZE_SLOP = 4;
 
 /**
  * Screen-fixed, collapsible private-hand panel anchored to the bottom of the
- * stage. A full-width tab (chevron + tile-count badge) toggles it; the tab band
- * still counts as the draw-to-hand drop zone while collapsed. Tiles live in the
- * inner `content` container — an unbounded canvas that pans freely in both
- * axes and zooms via the +/- tab buttons (the panel itself keeps a fixed
- * height). Tile layout, open state and zoom are client-local, persisted to
- * localStorage.
+ * stage. A full-width tab bar carries discrete, finger-sized buttons (collapse,
+ * arrange, zoom) — the bar itself never toggles on tap; instead dragging it
+ * vertically resizes the split between the hand and the main board. The tab
+ * band still counts as the draw-to-hand drop zone while collapsed. Tiles live
+ * in the inner `content` container — an unbounded canvas that pans freely in
+ * both axes and zooms via the tab buttons. Tile layout, open state, zoom and
+ * panel height are client-local, persisted to localStorage.
  */
 export class HandPanel extends Container {
   /** Tiles are parented here (not directly on the panel) so they can scroll. */
@@ -21,25 +30,38 @@ export class HandPanel extends Container {
   /** Set by the game to re-run its hand arrangement (tab ⇤ button). */
   onArrange: (() => void) | null = null;
 
+  /** Set by the game to clear the tile selection when the panel felt is tapped. */
+  onBackgroundTap: (() => void) | null = null;
+
   private bg: Graphics;
   private contentMask: Graphics;
   private tab: Container;
   private tabBg: Graphics;
-  private chevron: Text;
+  private grip: Graphics;
+  private collapseBtn: TabButton;
   private badge: Text;
-  private zoomInBtn: Text;
-  private zoomOutBtn: Text;
-  private arrangeBtn: Text;
+  private points: Text;
+  private zoomInBtn: TabButton;
+  private zoomOutBtn: TabButton;
+  private arrangeBtn: TabButton;
   private layoutKey: string;
   private stateKey: string;
   private zoomKey: string;
+  private heightKey: string;
   private layoutMap: Record<string, { x: number; y: number }>;
   private expanded = true;
   private panelHeight = 120;
+  /** User-chosen height (via the resize drag); null = derive from screen. */
+  private userHeight: number | null = null;
   private anim: number | null = null;
   private scrollPointer: number | null = null;
   private scrollLastX = 0;
   private scrollLastY = 0;
+  private resizePointer: number | null = null;
+  private resizeStartY = 0;
+  private resizeStartH = 0;
+  private resizing = false;
+  private labelsRight = 0;
 
   screenWidth = 0;
   screenHeight = 0;
@@ -49,6 +71,7 @@ export class HandPanel extends Container {
     this.layoutKey = `dp_hand_${room}_${clientId}`;
     this.stateKey = `dp_hand_open_${room}`;
     this.zoomKey = `dp_hand_zoom_${room}`;
+    this.heightKey = `dp_hand_h_${room}`;
     try {
       this.layoutMap = JSON.parse(localStorage.getItem(this.layoutKey) ?? '{}');
     } catch {
@@ -57,36 +80,59 @@ export class HandPanel extends Container {
     this.expanded = localStorage.getItem(this.stateKey) !== '0';
     const savedZoom = Number(localStorage.getItem(this.zoomKey));
     if (savedZoom >= MIN_ZOOM && savedZoom <= MAX_ZOOM) this.content.scale.set(savedZoom);
+    const savedH = Number(localStorage.getItem(this.heightKey));
+    if (savedH >= MIN_PANEL) this.userHeight = savedH;
 
     this.tab = new Container();
     this.tabBg = new Graphics();
     this.tab.addChild(this.tabBg);
-    this.chevron = new Text({ text: '', style: { fontSize: 14, fill: 0xffffff } });
-    this.chevron.anchor.set(0.5);
-    this.tab.addChild(this.chevron);
-    this.badge = new Text({ text: '', style: { fontSize: 13, fill: 0xffffff } });
+    this.grip = new Graphics();
+    this.tab.addChild(this.grip);
+    this.badge = new Text({ text: '', style: { fontSize: 14, fill: 0xffffff } });
     this.badge.anchor.set(0, 0.5);
     this.tab.addChild(this.badge);
-    this.tab.eventMode = 'static';
-    this.tab.cursor = 'pointer';
-    this.tab.on('pointertap', () => this.toggle());
+    this.points = new Text({ text: '', style: { fontSize: 14, fill: 0xcfd8e3 } });
+    this.points.anchor.set(0, 0.5);
+    this.tab.addChild(this.points);
 
-    const makeTabButton = (label: string, action: () => void): Text => {
-      const btn = new Text({ text: label, style: { fontSize: 18, fill: 0xffffff } });
-      btn.anchor.set(0.5);
-      btn.eventMode = 'static';
-      btn.cursor = 'pointer';
-      btn.on('pointerdown', (e) => e.stopPropagation());
-      btn.on('pointertap', (e) => {
-        e.stopPropagation();
-        action();
-      });
+    const makeTabButton = (label: string, action: () => void): TabButton => {
+      const btn = new TabButton(label, action);
       this.tab.addChild(btn);
       return btn;
     };
-    this.zoomInBtn = makeTabButton('＋', () => this.zoomBy(1.25));
     this.zoomOutBtn = makeTabButton('－', () => this.zoomBy(1 / 1.25));
+    this.zoomInBtn = makeTabButton('＋', () => this.zoomBy(1.25));
     this.arrangeBtn = makeTabButton('⇤', () => this.onArrange?.());
+    this.collapseBtn = makeTabButton('▼', () => this.toggle());
+
+    // The bar itself is the resize handle for the hand/board split.
+    this.tabBg.eventMode = 'static';
+    this.tabBg.cursor = 'ns-resize';
+    this.tabBg.on('pointerdown', (e) => {
+      this.resizePointer = e.pointerId;
+      this.resizeStartY = e.global.y;
+      this.resizeStartH = this.panelHeight;
+      this.resizing = false;
+    });
+    this.tabBg.on('globalpointermove', (e) => {
+      if (this.resizePointer !== e.pointerId) return;
+      const dy = this.resizeStartY - e.global.y;
+      if (!this.resizing) {
+        if (Math.abs(dy) < RESIZE_SLOP) return;
+        this.resizing = true;
+        // Dragging the bar upward out of a collapsed state opens the hand.
+        if (!this.expanded && dy > 0) this.setExpanded(true);
+      }
+      if (!this.expanded) return;
+      this.setPanelHeight(this.resizeStartH + dy);
+    });
+    const endResize = () => {
+      if (this.resizing) localStorage.setItem(this.heightKey, String(this.panelHeight));
+      this.resizePointer = null;
+      this.resizing = false;
+    };
+    this.tabBg.on('pointerup', endResize);
+    this.tabBg.on('pointerupoutside', endResize);
 
     this.bg = new Graphics();
     this.bg.position.y = TAB_HEIGHT;
@@ -107,6 +153,7 @@ export class HandPanel extends Container {
       this.scrollLastX = e.global.x;
       this.scrollLastY = e.global.y;
     });
+    this.bg.on('pointertap', () => this.onBackgroundTap?.());
     const endScroll = () => (this.scrollPointer = null);
     this.bg.on('pointerup', endScroll);
     this.bg.on('pointerupoutside', endScroll);
@@ -118,19 +165,39 @@ export class HandPanel extends Container {
     return this.expanded;
   }
 
+  private maxPanelHeight(): number {
+    return Math.max(MIN_PANEL, Math.round(this.screenHeight * 0.7) - TAB_HEIGHT);
+  }
+
   resize(width: number, height: number): void {
     this.screenWidth = width;
     this.screenHeight = height;
-    this.panelHeight = Math.min(120, Math.round(height * 0.22));
+    const wanted = this.userHeight ?? Math.min(120, Math.round(height * 0.22));
+    this.panelHeight = Math.max(MIN_PANEL, Math.min(this.maxPanelHeight(), wanted));
 
     this.tabBg.clear();
     this.tabBg.rect(0, 0, width, TAB_HEIGHT).fill(0x2c3e50);
     this.tabBg.rect(0, TAB_HEIGHT - 2, width, 2).fill(0x1f2d3a);
-    this.chevron.position.set(width / 2, TAB_HEIGHT / 2);
-    this.badge.position.set(width / 2 + 24, TAB_HEIGHT / 2);
-    this.zoomInBtn.position.set(width - 100, TAB_HEIGHT / 2);
-    this.zoomOutBtn.position.set(width - 64, TAB_HEIGHT / 2);
-    this.arrangeBtn.position.set(width - 28, TAB_HEIGHT / 2);
+
+    const cy = TAB_HEIGHT / 2;
+    let x = width - EDGE_PAD - BTN_W;
+    for (const btn of [this.collapseBtn, this.arrangeBtn, this.zoomInBtn, this.zoomOutBtn]) {
+      btn.layout(x, cy - BTN_H / 2, BTN_W, BTN_H);
+      x -= BTN_W + BTN_GAP;
+    }
+    this.labelsRight = this.layoutLabels();
+
+    // Grip pill: centred in the free space between the labels and the buttons,
+    // signalling the drag-to-resize affordance.
+    const gripLeft = this.labelsRight + 16;
+    const gripRight = x + BTN_W;
+    const gripW = Math.min(64, Math.max(0, gripRight - gripLeft - 16));
+    this.grip.clear();
+    if (gripW > 16) {
+      this.grip
+        .roundRect((gripLeft + gripRight - gripW) / 2, cy - 2.5, gripW, 5, 2.5)
+        .fill({ color: 0xffffff, alpha: 0.35 });
+    }
 
     this.bg.clear();
     this.bg.rect(0, 0, width, this.panelHeight).fill({ color: 0x388e3c, alpha: 0.92 });
@@ -138,6 +205,14 @@ export class HandPanel extends Container {
     this.contentMask.rect(0, TAB_HEIGHT, width, this.panelHeight).fill(0xffffff);
 
     this.snapPosition();
+  }
+
+  /** Resize the hand/board split; clamped and applied immediately. */
+  private setPanelHeight(h: number): void {
+    const next = Math.max(MIN_PANEL, Math.min(this.maxPanelHeight(), Math.round(h)));
+    if (next === this.panelHeight) return;
+    this.userHeight = next;
+    this.resize(this.screenWidth, this.screenHeight);
   }
 
   /** Zoom the hand tiles around the panel center; panel size is unchanged. */
@@ -156,8 +231,20 @@ export class HandPanel extends Container {
     if (!this.expanded) this.setExpanded(true);
   }
 
-  setCount(n: number): void {
+  /** Update the tile count and total pip count shown at the left of the bar. */
+  setCount(n: number, points: number): void {
     this.badge.text = n > 0 ? `🁢 ${n}` : '';
+    this.points.text = n > 0 ? `${points} pts` : '';
+    // Re-run the bar layout so the grip stays centred as the labels change width.
+    if (this.layoutLabels() !== this.labelsRight) this.resize(this.screenWidth, this.screenHeight);
+  }
+
+  /** Place the count labels; returns the x of their right edge. */
+  private layoutLabels(): number {
+    const cy = TAB_HEIGHT / 2;
+    this.badge.position.set(EDGE_PAD + 6, cy);
+    this.points.position.set(this.badge.x + this.badge.width + (this.badge.text ? 12 : 0), cy);
+    return this.points.x + this.points.width;
   }
 
   toggle(): void {
@@ -186,13 +273,15 @@ export class HandPanel extends Container {
     if (this.anim !== null) cancelAnimationFrame(this.anim);
     this.anim = null;
     this.position.set(0, this.targetY());
-    this.chevron.text = this.expanded ? '▼' : '▲';
+    this.collapseBtn.setLabel(this.expanded ? '▼' : '▲');
     this.content.visible = true;
+    this.publishHeight();
   }
 
   private animateTo(targetY: number): void {
     if (this.anim !== null) cancelAnimationFrame(this.anim);
-    this.chevron.text = this.expanded ? '▼' : '▲';
+    this.collapseBtn.setLabel(this.expanded ? '▼' : '▲');
+    this.publishHeight();
     const step = () => {
       const dy = targetY - this.y;
       if (Math.abs(dy) < 1) {
@@ -204,6 +293,12 @@ export class HandPanel extends Container {
       this.anim = requestAnimationFrame(step);
     };
     this.anim = requestAnimationFrame(step);
+  }
+
+  /** Expose the occupied bottom height so HTML overlays can sit above it. */
+  private publishHeight(): void {
+    const h = TAB_HEIGHT + (this.expanded ? this.panelHeight : 0);
+    document.documentElement.style.setProperty('--hand-h', `${h}px`);
   }
 
   /** Is a global (screen) point inside the panel or its tab band? */
@@ -268,6 +363,57 @@ export class HandPanel extends Container {
     } catch {
       // best-effort only
     }
+  }
+}
+
+/**
+ * A tab-bar button: a filled rounded rect so the whole touch target — not just
+ * the glyph — takes the tap, and swallows the press so the bar's resize drag
+ * never starts underneath it.
+ */
+class TabButton extends Container {
+  private bgRect = new Graphics();
+  private glyph: Text;
+  private w = BTN_W;
+  private h = BTN_H;
+
+  constructor(text: string, action: () => void) {
+    super();
+    this.glyph = new Text({ text, style: { fontSize: 18, fill: 0xffffff } });
+    this.glyph.anchor.set(0.5);
+    this.addChild(this.bgRect, this.glyph);
+    this.eventMode = 'static';
+    this.cursor = 'pointer';
+    this.on('pointerdown', (e) => {
+      e.stopPropagation();
+      this.paint(true);
+    });
+    const release = () => this.paint(false);
+    this.on('pointerup', release);
+    this.on('pointerupoutside', release);
+    this.on('pointertap', (e) => {
+      e.stopPropagation();
+      action();
+    });
+  }
+
+  setLabel(text: string): void {
+    this.glyph.text = text;
+  }
+
+  layout(x: number, y: number, w: number, h: number): void {
+    this.position.set(x, y);
+    this.w = w;
+    this.h = h;
+    this.glyph.position.set(w / 2, h / 2);
+    this.paint(false);
+  }
+
+  private paint(pressed: boolean): void {
+    this.bgRect.clear();
+    this.bgRect
+      .roundRect(0, 0, this.w, this.h, 8)
+      .fill({ color: pressed ? 0x4a90e2 : 0x3d566e, alpha: 1 });
   }
 }
 

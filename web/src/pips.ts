@@ -57,3 +57,9 @@ export function tileNames(setSize: number): string[] {
   }
   return names;
 }
+
+/** Total pip count of a `AxB` tile name. */
+export function tilePoints(name: string): number {
+  const [a, b] = name.split('x');
+  return (Number(a) || 0) + (Number(b) || 0);
+}
